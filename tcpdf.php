@@ -1,4 +1,7 @@
 <?php
+//Updated version by Erudio s.r.o.
+//URL: https://github.com/erudio-sro/TCPDF
+
 //============================================================+
 // File name   : tcpdf.php
 // Version     : 6.3.2
@@ -373,6 +376,12 @@ class TCPDF {
 	 * @protected
 	 */
 	protected $FontStyle;
+   
+   /**
+	 * @var Current font variant. - Erudio - small-caps support.
+	 * @protected
+	 */
+	protected $FontVariant;
 
 	/**
 	 * Current font ascent (distance between font top and baseline).
@@ -1823,7 +1832,7 @@ class TCPDF {
 	 * @protected
 	 * @since 5.9.152 (2012-03-23)
 	 */
-	protected $tcpdflink = true;
+	protected $tcpdflink = false; //Erudio
 
 	/**
 	 * Cache array for computed GD gamma values.
@@ -1831,6 +1840,11 @@ class TCPDF {
 	 * @since 5.9.1632 (2012-06-05)
 	 */
 	protected $gdgammacache = array();
+   
+   /**
+    * @var bool Erudio - povolení nedìlitelných mezer. Pøi true dìlá bordel - nedoporuèuje se !!!
+    */
+	protected $enableNbsp = false;
 
 	//------------------------------------------------------------
 	// METHODS
@@ -1897,6 +1911,7 @@ class TCPDF {
 		$this->lasth = 0;
 		$this->FontFamily = defined('PDF_FONT_NAME_MAIN')?PDF_FONT_NAME_MAIN:'helvetica';
 		$this->FontStyle = '';
+      $this->FontVariant = 'normal'; //Erudio: small-caps support		
 		$this->FontSizePt = 12;
 		$this->underline = false;
 		$this->overline = false;
@@ -1911,12 +1926,12 @@ class TCPDF {
 		$this->last_enc_key = '';
 		// standard Unicode fonts
 		$this->CoreFonts = array(
+			'helvetica'=>'Helvetica',
 			'courier'=>'Courier',
 			'courierB'=>'Courier-Bold',
 			'courierI'=>'Courier-Oblique',
 			'courierBI'=>'Courier-BoldOblique',
-			'helvetica'=>'Helvetica',
-			'helveticaB'=>'Helvetica-Bold',
+			/*'helveticaB'=>'Helvetica-Bold',
 			'helveticaI'=>'Helvetica-Oblique',
 			'helveticaBI'=>'Helvetica-BoldOblique',
 			'times'=>'Times-Roman',
@@ -1924,7 +1939,7 @@ class TCPDF {
 			'timesI'=>'Times-Italic',
 			'timesBI'=>'Times-BoldItalic',
 			'symbol'=>'Symbol',
-			'zapfdingbats'=>'ZapfDingbats'
+			'zapfdingbats'=>'ZapfDingbats'*/ //Erudio
 		);
 		// set scale factor
 		$this->setPageUnit($unit);
@@ -2010,6 +2025,8 @@ class TCPDF {
 		// Call cleanup method after script execution finishes or exit() is called.
 		// NOTE: This will not be executed if the process is killed with a SIGTERM or SIGKILL signal.
 		register_shutdown_function(array($this, '_destroy'), true);
+      $this->setPrintHeader(false); //ERUDIO
+      $this->setPrintFooter(false); //ERUDIO
 	}
 
 	/**
@@ -4130,6 +4147,21 @@ class TCPDF {
 	 * @since 5.9.000 (2010-09-28)
 	 */
 	public function getRawCharWidth($char) {
+      
+      if($this->FontVariant == 'small-caps') //Erudio:small-caps
+		{
+				$orig_font_size = $this->FontSizePt;
+				$small_caps_font_size = $this->FontSizePt * 0.7;
+				$char_txt = TCPDF_FONTS::unichr($char, $this->isunicode);
+				if (preg_match('/^\p{Ll}/u', $char_txt, $m, PREG_OFFSET_CAPTURE))	//Is it lowercase Letter?
+				{
+						$char_txt_ucase = mb_strtoupper($char_txt,"UTF-8");	//make it upper
+						$char_ucase = TCPDF_FONTS::uniord($char_txt_ucase);
+						$this->SetFontSize($small_caps_font_size);	//with smaller size
+						$char = $char_ucase;
+				}
+		}
+      
 		if ($char == 173) {
 			// SHY character will not be printed
 			return (0);
@@ -4145,7 +4177,12 @@ class TCPDF {
 		} else {
 			$w = 600;
 		}
-		return $this->getAbsFontMeasure($w);
+		$ret = $this->getAbsFontMeasure($w);
+		if($this->FontVariant == 'small-caps') //Erudio:small-caps
+		{
+			$this->SetFontSize($orig_font_size);
+		}
+		return $ret;
 	}
 
 	/**
@@ -5012,7 +5049,7 @@ class TCPDF {
 	 * @param $txt (string) String to print. Default value: empty string.
 	 * @param $border (mixed) Indicates if borders must be drawn around the cell. The value can be a number:<ul><li>0: no border (default)</li><li>1: frame</li></ul> or a string containing some or all of the following characters (in any order):<ul><li>L: left</li><li>T: top</li><li>R: right</li><li>B: bottom</li></ul> or an array of line styles for each border group - for example: array('LTRB' => array('width' => 2, 'cap' => 'butt', 'join' => 'miter', 'dash' => 0, 'color' => array(0, 0, 0)))
 	 * @param $ln (int) Indicates where the current position should go after the call. Possible values are:<ul><li>0: to the right (or left for RTL languages)</li><li>1: to the beginning of the next line</li><li>2: below</li></ul> Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value: 0.
-	 * @param $align (string) Allows to center or align the text. Possible values are:<ul><li>L or empty string: left align (default value)</li><li>C: center</li><li>R: right align</li><li>J: justify</li></ul>
+	 * @param $align (string) Allows to center or align the text. Possible values are:<ul><li>L or empty string: left align (default value)</li><li>C: center</li><li>R: right align</li><li>J: justify</li></ul> Erudio: Lze kombinovat s valign T,M,B
 	 * @param $fill (boolean) Indicates if the cell background must be painted (true) or transparent (false).
 	 * @param $link (mixed) URL or identifier returned by AddLink().
 	 * @param $stretch (int) font stretch mode: <ul><li>0 = disabled</li><li>1 = horizontal scaling only if text is larger than cell width</li><li>2 = forced horizontal scaling to fit cell width</li><li>3 = character spacing only if text is larger than cell width</li><li>4 = forced character spacing to fit cell width</li></ul> General font stretching and scaling values will be preserved when possible.
@@ -5024,6 +5061,81 @@ class TCPDF {
 	 * @see SetFont(), SetDrawColor(), SetFillColor(), SetTextColor(), SetLineWidth(), AddLink(), Ln(), MultiCell(), Write(), SetAutoPageBreak()
 	 */
 	public function Cell($w, $h=0, $txt='', $border=0, $ln=0, $align='', $fill=false, $link='', $stretch=0, $ignore_min_height=false, $calign='T', $valign='M') {
+   		
+		$txt = str_replace(chr(9),"",$txt); //Erudio
+
+		//Erudio úprava, aby se do $align dalo dát i $valign
+		$align_multi=$align;
+		for($i=0;$i<strlen($align_multi);$i++){
+			$al=$align_multi[$i];
+			if(in_array($al,array("L","C","R","J"))){
+				$align=$al;
+			}
+			if(in_array($al,array("T","M","B"))){
+				$valign=$al;
+			}
+		}
+
+		if($this->getFontVariant() === "small-caps")	//Erudio:small-caps
+		{
+				if($align == 'J')	//No Justify for small-caps, sorry :-(
+				{
+						$align = 'L';
+				}
+
+				$orig_font_size = $this->FontSizePt;
+				$small_caps_font_size = $this->FontSizePt * 0.7;
+
+				$ascent_orig = $this->FontAscent;
+				$descent_orig = $this->FontDescent;
+
+				$parts = $this->findLowercaseParts($txt);
+				if ($parts !== null)
+				{
+					$this->setFontVariant('normal');	//inner subcalls do not use small-caps
+					$txt_width = 0;
+					foreach ($parts as $part)
+					{
+							$write_text = $part["text"];
+							$font_size = $orig_font_size;
+							if ($part["lowercase"])
+							{
+									$write_text = mb_strtoupper($part["text"], "UTF-8");
+									$font_size = $small_caps_font_size;
+							}
+							$txt_width += $this->GetStringWidth($write_text,$this->FontFamily,$this->FontStyle,$font_size);
+					}
+					$start_x = $this->x;
+					if($align == "R")
+					{
+							$this->x += $w - $txt_width - $this->cell_padding['R'] - $this->cell_padding['L'];
+					}
+					foreach ($parts as $part)
+					{
+							$write_text = $part["text"];
+							if ($part["lowercase"])
+							{
+									$write_text = mb_strtoupper($part["text"], "UTF-8");
+									$this->SetFontSize($small_caps_font_size);
+									$this->FontAscent = $ascent_orig;	//leaveOriginal ascent+descent, so letter matches bottom/top of original letter
+									$this->FontDescent = $descent_orig;
+							}
+							$txt_width = $this->GetStringWidth($write_text);
+							$this->Cell($txt_width, $h, $write_text, 0, 0, 'L',false,$link,0 /*stretch probably won't work*/,$ignore_min_height,$calign,$valign);
+
+							if ($part["lowercase"])
+							{
+									$this->SetFontSize($orig_font_size);
+							}
+					}
+
+					//draw the cell again with empty text -> for correct Cell method parameters like $border and $ln
+					$this->x = $start_x;
+					$txt = "";
+					$this->setFontVariant('small-caps'); //small-caps back on
+				}
+		}
+		
 		$prev_cell_margin = $this->cell_margin;
 		$prev_cell_padding = $this->cell_padding;
 		$this->adjustCellPadding($border);
@@ -5787,6 +5899,28 @@ class TCPDF {
 	 * @see SetFont(), SetDrawColor(), SetFillColor(), SetTextColor(), SetLineWidth(), Cell(), Write(), SetAutoPageBreak()
 	 */
 	public function MultiCell($w, $h, $txt, $border=0, $align='J', $fill=false, $ln=1, $x='', $y='', $reseth=true, $stretch=0, $ishtml=false, $autopadding=true, $maxh=0, $valign='T', $fitcell=false) {
+      //Erudio úprava, aby se do $align dalo dát i $valign
+      $align_multi=$align;
+      for($i=0;$i<strlen($align_multi);$i++){
+         $al=$align_multi[$i];
+         if(in_array($al,array("L","C","R","J"))){
+            $align=$al;
+         }
+         if(in_array($al,array("T","M","B"))){
+            $valign=$al;
+            $maxh = $h;
+         }
+      }
+      if($align == 'J') //Erudio oprava posledního øádku v zarovnání do bloku
+      {
+            $txt .= "\n";
+      }
+      $txt = str_replace(chr(9),"",$txt); //Erudio
+      if (!$this->enableNbsp) //Erudio
+      {
+            $txt = str_replace(chr(0xc2) . chr(0xa0), " ", $txt); //Erudio nedìlitelná mezera, dìlá bordel, odstranit
+      }
+      
 		$prev_cell_margin = $this->cell_margin;
 		$prev_cell_padding = $this->cell_padding;
 		// adjust internal padding
@@ -6287,6 +6421,38 @@ class TCPDF {
 		$this->lasth = $prev_lasth;
 		return $height;
 	}
+   
+   /** Erudio
+	 * @param string $txt Splits text according to lowercase/uppercase parts
+	 * @return array|null
+	 */
+	public static function findLowercaseParts($txt)
+	{
+		$parts = array();
+		if(preg_match_all('/\p{Ll}+/u',$txt, $m, PREG_OFFSET_CAPTURE)) { /* Process all blocks of Unicode character class Lowercase letter */
+			$last_offset = 0;
+			foreach($m[0] as $letoff)
+			{
+				$lowercaseLetters = $letoff[0];
+				$offset = $letoff[1];
+				if($offset !== 0)
+				{
+					$normal_part = substr($txt, $last_offset, $offset - $last_offset);
+					$parts[] = array('text'=>$normal_part,'lowercase' => false, 'begin' => $last_offset, 'end' => $offset);
+				}
+				$parts[] = array('text' => $lowercaseLetters,'lowercase' => true, 'begin' => $offset, 'end' => $offset+strlen($lowercaseLetters));
+				$last_offset = $offset + strlen($lowercaseLetters);
+			}
+
+			if($last_offset !== strlen($txt)) //some not lowercase letters on the end
+			{
+				$normal_part = substr($txt, $last_offset);
+				$parts[] = array('text'=>$normal_part, 'lowercase' => false, 'begin' => $last_offset, 'end' => strlen($txt));
+			}
+			return $parts;
+		}
+		return null;
+	}
 
 	/**
 	 * This method prints text from the current position.<br />
@@ -6363,7 +6529,7 @@ class TCPDF {
 		}
 		if ((!$firstline) AND (($chrwidth > $wmax) OR ($maxchwidth > $wmax))) {
 			// the maximum width character do not fit on column
-			return '';
+			//return '';  //Erudio oprava #19375
 		}
 		// minimum row height
 		$row_height = max($h, $this->getCellHeight($this->FontSize));
@@ -7582,6 +7748,7 @@ class TCPDF {
 			$name = preg_replace('/[\s]+/', '_', $name);
 			$name = preg_replace('/[^a-zA-Z0-9_\.-]/', '', $name);
 		}
+      $ok = true;  //Erudio
 		if ($this->sign) {
 			// *** apply digital signature to the document ***
 			// get the document content
@@ -7613,9 +7780,9 @@ class TCPDF {
 			// get digital signature via openssl library
 			$tempsign = TCPDF_STATIC::getObjFilename('sig', $this->file_id);
 			if (empty($this->signature_data['extracerts'])) {
-				openssl_pkcs7_sign($tempdoc, $tempsign, $this->signature_data['signcert'], array($this->signature_data['privkey'], $this->signature_data['password']), array(), PKCS7_BINARY | PKCS7_DETACHED);
+				$ok /*Erudio*/= openssl_pkcs7_sign($tempdoc, $tempsign, $this->signature_data['signcert'], array($this->signature_data['privkey'], $this->signature_data['password']), array(), PKCS7_BINARY | PKCS7_DETACHED);
 			} else {
-				openssl_pkcs7_sign($tempdoc, $tempsign, $this->signature_data['signcert'], array($this->signature_data['privkey'], $this->signature_data['password']), array(), PKCS7_BINARY | PKCS7_DETACHED, $this->signature_data['extracerts']);
+				$ok /*Erudio*/= openssl_pkcs7_sign($tempdoc, $tempsign, $this->signature_data['signcert'], array($this->signature_data['privkey'], $this->signature_data['password']), array(), PKCS7_BINARY | PKCS7_DETACHED, $this->signature_data['extracerts']);
 			}
 			// read signature
 			$signature = file_get_contents($tempsign);
@@ -7635,11 +7802,17 @@ class TCPDF {
 			$this->buffer = substr($pdfdoc, 0, $byte_range[1]).'<'.$signature.'>'.substr($pdfdoc, $byte_range[1]);
 			$this->bufferlen = strlen($this->buffer);
 		}
+      if($ok === false) //Erudio uprava
+      {
+            return false;
+      }
 		switch($dest) {
 			case 'I': {
 				// Send PDF to the standard output
 				if (ob_get_contents()) {
-					$this->Error('Some data has already been output, can\'t send PDF file');
+               ob_flush(); //Erudio
+               if(php_sapi_name() == "cli") //Erudio
+					    $this->Error('Some data has already been output, can\'t send PDF file');
 				}
 				if (php_sapi_name() != 'cli') {
 					// send output to a browser
@@ -7657,12 +7830,15 @@ class TCPDF {
 				} else {
 					echo $this->getBuffer();
 				}
-				break;
+				//break;
+            return true; //Erudio uprava
 			}
 			case 'D': {
 				// download PDF as file
 				if (ob_get_contents()) {
-					$this->Error('Some data has already been output, can\'t send PDF file');
+               ob_flush(); //Erudio
+               if(php_sapi_name() == "cli") //Erudio
+					    $this->Error('Some data has already been output, can\'t send PDF file');
 				}
 				header('Content-Description: File Transfer');
 				if (headers_sent()) {
@@ -7711,7 +7887,9 @@ class TCPDF {
 				} elseif ($dest == 'FD') {
 					// send headers to browser
 					if (ob_get_contents()) {
-						$this->Error('Some data has already been output, can\'t send PDF file');
+                  ob_flush(); //Erudio
+                  if(php_sapi_name() == "cli") //Erudio                                       
+						   $this->Error('Some data has already been output, can\'t send PDF file');
 					}
 					header('Content-Description: File Transfer');
 					if (headers_sent()) {
@@ -16462,6 +16640,7 @@ class TCPDF {
 		$dom[$key]['fontname'] = $this->FontFamily;
 		$dom[$key]['fontstyle'] = $this->FontStyle;
 		$dom[$key]['fontsize'] = $this->FontSizePt;
+      $dom[$key]['fontvariant'] = $this->FontVariant; //Erudio:small-caps
 		$dom[$key]['font-stretch'] = $this->font_stretching;
 		$dom[$key]['letter-spacing'] = $this->font_spacing;
 		$dom[$key]['stroke'] = $this->textstrokewidth;
@@ -16515,6 +16694,7 @@ class TCPDF {
 					array_pop($level);
 					$dom[$key]['hide'] = $dom[($dom[($dom[$key]['parent'])]['parent'])]['hide'];
 					$dom[$key]['fontname'] = $dom[($dom[($dom[$key]['parent'])]['parent'])]['fontname'];
+               $dom[$key]['fontvariant'] = $dom[($dom[($dom[$key]['parent'])]['parent'])]['fontvariant']; //Erudio: small-caps					
 					$dom[$key]['fontstyle'] = $dom[($dom[($dom[$key]['parent'])]['parent'])]['fontstyle'];
 					$dom[$key]['fontsize'] = $dom[($dom[($dom[$key]['parent'])]['parent'])]['fontsize'];
 					$dom[$key]['font-stretch'] = $dom[($dom[($dom[$key]['parent'])]['parent'])]['font-stretch'];
@@ -16585,7 +16765,8 @@ class TCPDF {
 						$parentkey = $dom[$key]['parent'];
 						$dom[$key]['hide'] = $dom[$parentkey]['hide'];
 						$dom[$key]['fontname'] = $dom[$parentkey]['fontname'];
-						$dom[$key]['fontstyle'] = $dom[$parentkey]['fontstyle'];
+                  $dom[$key]['fontstyle'] = $dom[$parentkey]['fontstyle'];
+						$dom[$key]['fontvariant'] = $dom[$parentkey]['fontvariant']; //Erudio: small-caps
 						$dom[$key]['fontsize'] = $dom[$parentkey]['fontsize'];
 						$dom[$key]['font-stretch'] = $dom[$parentkey]['font-stretch'];
 						$dom[$key]['letter-spacing'] = $dom[$parentkey]['letter-spacing'];
@@ -16636,6 +16817,15 @@ class TCPDF {
 						if (isset($dom[$key]['style']['font-family'])) {
 							$dom[$key]['fontname'] = $this->getFontFamilyName($dom[$key]['style']['font-family']);
 						}
+                  
+                  //Erudio: podpora font-variant: small-caps
+						if(isset($dom[$key]['style']['font-variant'])) {
+							$dom[$key]['fontvariant'] = trim(strtolower($dom[$key]['style']['font-variant']));
+							if ($dom[$key]['fontvariant'] == 'inherit') {
+								$dom[$key]['fontvariant'] = $dom[$parentkey]['fontvariant'];
+							}
+						}
+                  
 						// list-style-type
 						if (isset($dom[$key]['style']['list-style-type'])) {
 							$dom[$key]['listtype'] = trim(strtolower($dom[$key]['style']['list-style-type']));
@@ -16992,6 +17182,9 @@ class TCPDF {
 							$colspan = 1;
 						}
 						$dom[$key]['attribute']['colspan'] = $colspan;
+                  if(!isset($dom[($dom[$key]['parent'])]['cols'])){//Erudio
+                     $dom[($dom[$key]['parent'])]['cols']  = 0 ;
+                  }
 						$dom[($dom[$key]['parent'])]['cols'] += $colspan;
 					}
 					// text direction
@@ -17175,6 +17368,16 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
 	 * @public
 	 */
 	public function writeHTML($html, $ln=true, $fill=false, $reseth=false, $cell=false, $align='') {
+      //Erudio úprava: oprava tabulek
+      try {
+         $html = self::fixHTML($html);
+      } catch (Exception $e) {
+            //ignore
+      }
+
+      //Erudio: fix for auto breaks
+      $this->lasth = $this->FontSize * $this->cell_height_ratio;
+
 		$gvars = $this->getGraphicVars();
 		// store current values
 		$prev_cell_margin = $this->cell_margin;
@@ -17185,6 +17388,7 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
 		$curfontname = $this->FontFamily;
 		$curfontstyle = $this->FontStyle;
 		$curfontsize = $this->FontSizePt;
+      $curfontvariant = $this->FontVariant; //Erudio: podpora small-caps		
 		$curfontascent = $this->getFontAscent($curfontname, $curfontstyle, $curfontsize);
 		$curfontdescent = $this->getFontDescent($curfontname, $curfontstyle, $curfontsize);
 		$curfontstretcing = $this->font_stretching;
@@ -17317,6 +17521,7 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
 					$this_method_vars['prevrMargin'] = $prevrMargin;
 					$this_method_vars['curfontname'] = $curfontname;
 					$this_method_vars['curfontstyle'] = $curfontstyle;
+               $this_method_vars['curfontvariant'] = $curfontvariant; //Erudio: podpora small-caps					
 					$this_method_vars['curfontsize'] = $curfontsize;
 					$this_method_vars['curfontascent'] = $curfontascent;
 					$this_method_vars['curfontdescent'] = $curfontdescent;
@@ -17479,17 +17684,20 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
 						$minstartliney = min($this->y, $minstartliney);
 						$maxbottomliney = ($startliney + $this->getCellHeight($curfontsize / $this->k));
 					}
-				} elseif (isset($dom[$key]['fontname']) OR isset($dom[$key]['fontstyle']) OR isset($dom[$key]['fontsize']) OR isset($dom[$key]['line-height'])) {
+				} elseif (isset($dom[$key]['fontname']) OR isset($dom[$key]['fontstyle']) OR isset($dom[$key]['fontsize']) OR isset($dom[$key]['line-height']) OR isset($dom[$key]['fontvariant']) /*Erudio: small-caps*/) {
 					// account for different font size
 					$pfontname = $curfontname;
 					$pfontstyle = $curfontstyle;
 					$pfontsize = $curfontsize;
+               $pfontvariant = $curfontvariant; //Erudio: small-caps
+
 					$fontname = (isset($dom[$key]['fontname']) ? $dom[$key]['fontname'] : $curfontname);
 					$fontstyle = (isset($dom[$key]['fontstyle']) ? $dom[$key]['fontstyle'] : $curfontstyle);
 					$fontsize = (isset($dom[$key]['fontsize']) ? $dom[$key]['fontsize'] : $curfontsize);
-					$fontascent = $this->getFontAscent($fontname, $fontstyle, $fontsize);
+					$fontvariant = (isset($dom[$key]['fontvariant']) ? $dom[$key]['fontvariant'] : $curfontvariant); //Erudio: small-caps
+				   $fontascent = $this->getFontAscent($fontname, $fontstyle, $fontsize);
 					$fontdescent = $this->getFontDescent($fontname, $fontstyle, $fontsize);
-					if (($fontname != $curfontname) OR ($fontstyle != $curfontstyle) OR ($fontsize != $curfontsize)
+					if (($fontname != $curfontname) OR ($fontstyle != $curfontstyle) OR ($fontsize != $curfontsize) OR ($fontvariant != $curfontvariant) /*Erudio: small-caps */
 						OR ($this->cell_height_ratio != $dom[$key]['line-height'])
 						OR ($dom[$key]['tag'] AND $dom[$key]['opening'] AND ($dom[$key]['value'] == 'li')) ) {
 						if (($key < ($maxel - 1)) AND (
@@ -17562,10 +17770,12 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
 							$fontaligned = true;
 						}
 						$this->SetFont($fontname, $fontstyle, $fontsize);
+                  $this->setFontVariant($fontvariant); //Erudio: small-caps						
 						// reset row height
 						$this->resetLastH();
 						$curfontname = $fontname;
 						$curfontstyle = $fontstyle;
+                  $curfontvariant = $fontvariant; //Erudio: small-caps						
 						$curfontsize = $fontsize;
 						$curfontascent = $fontascent;
 						$curfontdescent = $fontdescent;
@@ -18057,6 +18267,7 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
 					AND (isset($this->emptypagemrk[$this->page]))
 					AND ($this->emptypagemrk[$this->page] == $this->pagelen[$this->page]))) {
 					$this->SetFont($fontname, $fontstyle, $fontsize);
+               $this->setFontVariant($fontvariant);					
 					if ($wfill) {
 						$this->SetFillColorArray($this->bgcolor);
 					}
@@ -18231,6 +18442,9 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
 								}
 							}
 						}
+                  if(!isset($colid)){ // Erudio
+                     $colid = 0;
+                  }
 						if (isset($dom[$parentid]['width'])) {
 							// user specified width
 							$cellw = $this->getHTMLUnitToUnits($dom[$parentid]['width'], $table_columns_width, 'px');
@@ -18252,6 +18466,9 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
 						if ($rowspan > 1) {
 							$trsid = array_push($dom[$table_el]['rowspans'], array('trid' => $trid, 'rowspan' => $rowspan, 'mrowspan' => $rowspan, 'colspan' => $colspan, 'startpage' => $this->page, 'startcolumn' => $this->current_column, 'startx' => $this->x, 'starty' => $this->y));
 						}
+                  if(!isset($dom[$trid]['cellpos'])){ //Erudio
+                     $dom[$trid]['cellpos'] = array();
+                  }
 						$cellid = array_push($dom[$trid]['cellpos'], array('startx' => $this->x));
 						if ($rowspan > 1) {
 							$dom[$trid]['cellpos'][($cellid - 1)]['rowspanid'] = ($trsid - 1);
@@ -18359,6 +18576,7 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
 				// print list-item
 				if (!TCPDF_STATIC::empty_string($this->lispacer) AND ($this->lispacer != '^')) {
 					$this->SetFont($pfontname, $pfontstyle, $pfontsize);
+               $this->setFontVariant($pfontvariant); //Erudio: small-caps					
 					$this->resetLastH();
 					$minstartliney = $this->y;
 					$maxbottomliney = ($startliney + $this->getCellHeight($this->FontSize));
@@ -18366,6 +18584,7 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
 						$this->putHtmlListBullet($this->listnum, $this->lispacer, $pfontsize);
 					}
 					$this->SetFont($curfontname, $curfontstyle, $curfontsize);
+               $this->setFontVariant($curfontvariant); //Erudio: small-caps					
 					$this->resetLastH();
 					if (is_numeric($pfontsize) AND ($pfontsize > 0) AND is_numeric($curfontsize) AND ($curfontsize > 0) AND ($pfontsize != $curfontsize)) {
 						$pfontascent = $this->getFontAscent($pfontname, $pfontstyle, $pfontsize);
@@ -20614,6 +20833,7 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
 		$grapvars = array(
 			'FontFamily' => $this->FontFamily,
 			'FontStyle' => $this->FontStyle,
+         'FontVariant' => $this->FontVariant, //Erudio: podpora pro small-caps			
 			'FontSizePt' => $this->FontSizePt,
 			'rMargin' => $this->rMargin,
 			'lMargin' => $this->lMargin,
@@ -20676,8 +20896,9 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
 			 return;
 		}
 		$this->FontFamily = $gvars['FontFamily'];
+		$this->FontVariant = $gvars['FontVariant']; //Erudio: podpora small-caps		
 		$this->FontStyle = $gvars['FontStyle'];
-		$this->FontSizePt = $gvars['FontSizePt'];
+      $this->FontSizePt = $gvars['FontSizePt'];
 		$this->rMargin = $gvars['rMargin'];
 		$this->lMargin = $gvars['lMargin'];
 		$this->cell_padding = $gvars['cell_padding'];
@@ -22557,6 +22778,25 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
 	public function setFontSpacing($spacing=0) {
 		$this->font_spacing = $spacing;
 	}
+   
+   /**
+	 * Set font variant. Erudio: podpora small-caps. POZOR: funguje jen pro Write a WriteHTML, ne pro Cell apod.
+	 * @param string $variant 'normal'|'small-caps'
+	 */
+	public function setFontVariant($variant)
+	{
+		//TODO: Maybe check valid values
+		$this->FontVariant = $variant;
+	}
+
+	/**
+	 * Get current font variant
+	 * @return string Current font variant - 'normal'|'small-caps'
+	 */
+	public function getFontVariant()
+	{
+		return $this->FontVariant;
+	}
 
 	/**
 	 * Get the amount to increase or decrease the space between characters in a text.
@@ -23309,6 +23549,12 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
 			} else {
 				$font_style = $svgstyle['font-style'];
 			}
+         //Erudio: podpora small-caps
+			if (preg_match('/font-variant[\s]*:[\s]*([^\s\;\"]*)/si', $svgstyle['font'], $regs)) {
+				$font_variant = trim($regs[1]);
+			} else {
+				$font_variant = $svgstyle['font-variant'];
+			}
 			if (preg_match('/font-weight[\s]*:[\s]*([^\s\;\"]*)/si', $svgstyle['font'], $regs)) {
 				$font_weight = trim($regs[1]);
 			} else {
@@ -23331,6 +23577,7 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
 			$font_weight = $svgstyle['font-weight'];
 			$font_stretch = $svgstyle['font-stretch'];
 			$font_spacing = $svgstyle['letter-spacing'];
+         $font_variant = $svgstyle['font-variant']; //Erudio: podpora small-caps
 		}
 		$font_size = $this->getHTMLFontUnits($font_size, $this->svgstyles[0]['font-size'], $prevsvgstyle['font-size'], $this->svgunit);
 		$font_stretch = $this->getCSSFontStretching($font_stretch, $svgstyle['font-stretch']);
@@ -23386,6 +23633,7 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
 		$this->SetFont($font_family, $font_style, $font_size);
 		$this->setFontStretching($font_stretch);
 		$this->setFontSpacing($font_spacing);
+      $this->setFontVariant($font_variant); //Erudio: podpora small-caps		
 		return $objstyle;
 	}
 
@@ -24570,6 +24818,459 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
 	}
 
 	// --- END SVG METHODS -----------------------------------------------------
+
+      //============== ERUDIO nové =======
+
+
+      function getCMargin(){
+         return $this->cell_padding['L']+$this->cell_padding['R']+$this->cell_margin['L']+$this->cell_margin['R'];
+      }
+
+      function CellT($w,$h=0,$txt='',$border=0,$ln=0,$align='')
+      {  //oøízne pøetékající text
+         while($this->GetStringWidth($txt)>($w-$this->getCMargin()))
+         {
+               $txt = mb_substr($txt,0,-1,'UTF-8');
+         }
+         $this->Cell($w,$h,$txt,$border,$ln,$align);
+      }
+
+      public function getOrientation(){
+         return $this->CurOrientation;
+      }
+
+     /**
+      * Funkce pro zjistìní poètu øádkù vzniklých dìlením multicellu
+      * @param int $width
+      * @param string $txt
+      * @return array ('num_line' => poèet øádek, 'txt_len' => délka textu celkem)
+      */
+     function MultiCellCount($width,$txt)
+     {
+           $cw = &$this->CurrentFont['cw'];
+           if($width == 0)
+            {
+                     $width = $this->w - $this->rMargin - $this->x;
+            }
+           $widthmax = ($width - $this->getCMargin()) * 1000/$this->FontSize;
+           $tmp_str = str_replace("\r",'',$txt);
+           $nb = mb_strlen($tmp_str,"UTF-8");
+
+           if($nb>0 && mb_substr($tmp_str,$nb-1,1,"UTF-8") == "\n")
+                 $nb--;
+
+           $total_len = 0;
+           $sep_index = -1;
+           $index = 0;
+           $j = 0;
+           $len_line = 0;
+           $num_line = 1;
+           while($index < $nb)
+           {
+                 //Get next character
+                 $char = mb_substr($tmp_str,$index,1,"UTF-8");
+                 $charcode = TCPDF_FONTS::uniord($char);
+                 if(!isset($cw[$charcode]))
+                 {
+                     $total_len += 500;
+                 }
+                 else
+                 {
+                     $total_len += $cw[$charcode];
+                 }
+                 if($char == "\n")
+                 {
+                       //Explicit line break
+                       $index++;
+                       $sep_index = -1;
+                       $j = $index;
+                       $len_line = 0;
+                       $num_line++;
+                 }
+           else
+           {
+              if($char == ' ')
+              {
+                 $sep_index = $index;
+              }
+              if(!isset($cw[$charcode]))
+              {
+                 $len_line += 500;
+              }
+              else
+              {
+                  $len_line += $cw[$charcode];
+              }
+              if($len_line > $widthmax)
+              {
+                 //Automatic line break
+                 if($sep_index == -1)
+                 {
+                    if($index == $j)
+                       $index++;
+                 }
+                 else
+                 {
+                    $index = $sep_index + 1;
+                 }
+                 $sep_index = -1;
+                 $j = $index;
+                 $len_line = 0;
+                 $num_line++;
+              }
+              else
+                 $index++;
+           }
+           }
+        return array('num_line' => $num_line, 'txt_len' => ($total_len*$this->FontSize)/1000);
+     }
+
+     function RotatedText($x,$y,$txt,$angle)
+     {
+           $px = $this->getX();
+           $py = $this->getY();
+           $this->StartTransform();
+           $this->Rotate($angle,$x,$y);
+           $this->Text($x,$y,$txt);
+           $this->StopTransform();
+           $this->SetXY($px,$py);
+     }
+
+     function HTMLCell($w,$h,$html,$border=0, $align='', $fill=false, $ln=0, $x = null,$y = null, $reseth=true, $autopadding=true){
+        if($x === null){
+           $x = $this->x;
+        }
+        if($y === null){
+           $y = $this->y;
+        }
+        $this->writeHTMLCell($w, $h, $x, $y, $html,$border,$ln, $fill,$reseth,$align,$autopadding);
+     }
+
+     function UTF8toSubset($str) {
+         $ret = '<';
+         if ($this->AliasNbPages)
+               $str = preg_replace('/'.preg_quote($this->AliasNbPages,'/').'/', chr(7), $str );
+         $unicode = $this->UTF8StringToArray($str);
+         $orig_fid = $this->CurrentFont['subsetfontids'][0];
+         $last_fid = $this->CurrentFont['subsetfontids'][0];
+         foreach($unicode as $c) {
+            if ($c == 7) {
+                     if ($orig_fid != $last_fid) {
+                           $ret .= '> Tj /F'.$orig_fid.' '.$this->FontSizePt.' Tf <';
+                           $last_fid = $orig_fid;
+                     }
+                     $ret .= '`'.$this->AliasNbPages.'`';
+                     continue;
+            }
+            for ($i=0; $i<99; $i++) {
+               // return c as decimal char
+               $init = array_search($c, $this->CurrentFont['subsets'][$i]);
+               if ($init!==false) {
+                     if ($this->CurrentFont['subsetfontids'][$i] != $last_fid) {
+                           $ret .= '> Tj /F'.$this->CurrentFont['subsetfontids'][$i].' '.$this->FontSizePt.' Tf <';
+                           $last_fid = $this->CurrentFont['subsetfontids'][$i];
+                     }
+                     $ret .= sprintf("%02s", strtoupper(dechex($init)));
+                     break;
+               }
+               else if (count($this->CurrentFont['subsets'][$i]) < 255) {
+                     $n = count($this->CurrentFont['subsets'][$i]);
+                     $this->CurrentFont['subsets'][$i][$n] = $c;
+                     if ($this->CurrentFont['subsetfontids'][$i] != $last_fid) {
+                           $ret .= '> Tj /F'.$this->CurrentFont['subsetfontids'][$i].' '.$this->FontSizePt.' Tf <';
+                           $last_fid = $this->CurrentFont['subsetfontids'][$i];
+                     }
+                     $ret .= sprintf("%02s", strtoupper(dechex($n)));
+                     break;
+               }
+               else if (!isset($this->CurrentFont['subsets'][($i+1)])) {
+                     $this->CurrentFont['subsets'][($i+1)] = array(0=>0);
+                     $new_fid = count($this->fonts)+$this->extraFontSubsets+1;
+                     $this->CurrentFont['subsetfontids'][($i+1)] = $new_fid;
+                     $this->extraFontSubsets++;
+               }
+            }
+         }
+         $ret .= '>';
+         if ($last_fid != $orig_fid) {
+               $ret .= ' Tj /F'.$orig_fid.' '.$this->FontSizePt.' Tf <> ';
+         }
+         return $ret;
+   }
+
+      function WordWrap($text, $maxwidth){
+         $text = trim($text);
+         if($text==='') return 0;
+         $space = $this->GetStringWidth(' ');
+         $lines = explode("\n", $text);
+         $text = '';
+         $count = 0;
+
+         foreach ($lines as $line){
+            $words = preg_split('/ +/', $line);
+            $width = 0;
+
+            foreach ($words as $word){
+               $wordwidth = $this->GetStringWidth($word);
+               if ($width + $wordwidth <= $maxwidth){
+                  $width += $wordwidth + $space;
+                  $text .= $word.' ';
+               }else{
+                  $width = $wordwidth + $space;
+                  $text = rtrim($text)."\n".$word.' ';
+                  $count++;
+               }
+            }
+            $text = rtrim($text)."\n";
+         $count++;
+         }
+         $text = rtrim($text);
+         return $count;
+      }
+
+      function WriteX($height, $txt, $begtxt, $endtxt)
+      {
+            if ($txt != "")
+            {
+                  $this->Write($height, $begtxt.$txt.$endtxt);
+            }
+      }
+
+      function CheckPunct($h, $text, $isnt = '', $is = '')
+      {
+            $test = mb_substr($text, -1,null,"UTF-8");
+
+            if ($test == '?' or $test == '!' or $test == '.')
+            {
+
+                  $this->Write($h, $is);
+            }
+            else
+            {
+                  $this->Write($h, $isnt);
+            }
+      }
+
+      function myGetXY()
+      {
+            $a = array();
+
+            $a[] = $this->GetX();
+            $a[] = $this->GetY();
+
+            return $a;
+      }
+
+      function mySetXY($a)
+      {
+            list ($x, $y) = $a;
+            $this->SetXY($x, $y);
+      }
+
+      // Converts UTF-8 strings to codepoints array
+      function UTF8StringToArray($str) {
+         $out = array();
+         $len = strlen($str);
+         for ($i = 0; $i < $len; $i++) {
+            $h = ord($str[$i]);
+            if ( $h <= 0x7F )
+               $out[] = $h;
+            elseif ( $h >= 0xC2 ) {
+               if ( ($h <= 0xDF) && ($i < $len -1) )
+                  $out[] = ($h & 0x1F) << 6 | (ord($str{++$i}) & 0x3F);
+               elseif ( ($h <= 0xEF) && ($i < $len -2) )
+                  $out[] = ($h & 0x0F) << 12 | (ord($str{++$i}) & 0x3F) << 6
+                                             | (ord($str{++$i}) & 0x3F);
+               elseif ( ($h <= 0xF4) && ($i < $len -3) )
+                  $out[] = ($h & 0x0F) << 18 | (ord($str{++$i}) & 0x3F) << 12
+                                             | (ord($str{++$i}) & 0x3F) << 6
+                                             | (ord($str{++$i}) & 0x3F);
+            }
+         }
+         return $out;
+      }
+
+
+   /** Erudio
+    *  zjistí poèet sloupcù øádku
+    * @param DOMNode $tr
+    */
+   private static function numcols($tr)
+   {
+      //FIXME: asi to nebude šlapat s rowspany
+      $cols=0;
+      for($i=0;$i<$tr->childNodes->length;$i++)
+      {
+         $n = $tr->childNodes->item($i);
+         if(in_array($n->localName,array("td","th")))
+         {
+               $cs = $n->getAttribute("colspan");
+               if(!empty($cs))
+               {
+                     $cols+=$cs;
+               }
+               else
+               {
+                     $cols++;
+               }
+         }
+      }
+      return $cols;
+   }
+
+   /** Erudio
+    * pøidá td do øádku tabulky na daný poèet sloupcù
+    * @param DOMNode $tr Øádek
+    * @param int $num Poèet sloupcù kolik má být
+    * @param DOMDocument $doc Celý dokument
+    */
+   private static function fixcols($tr,$num,$doc)
+   {
+      $nc = self::numcols($tr);
+      for($i=0;$i<$num-$nc;$i++)
+      {
+            $td = $doc->createElement("td");
+            $tr->appendChild($td);
+      }
+   }
+
+   /**
+    * Vypíše text s informací, že PDF je podepsané. Na text se dá v Adobe readeru kliknout - zobrazí certifikát
+    * @param string $txt Text s informací o podepsání. Pøi null se bere výchozí jaderný.
+    * @param array $cert_cfg Konfiguraèní parametr s certifikátem. Pokud není uveden, bere se vyspl/cert dle fakulty z dl_ses
+    * @param string $fakulta Fakulta, pokud neuvedeno, pak fakulta z dl_ses
+    */
+   public function writePodepsano($txt = null)
+   {
+      global $dl_config;
+
+      $cert_cfg = $dl_config["stev"]["certifikat"];
+      if (isset($cert_cfg) && $cert_cfg['Path'] && is_readable($cert_cfg['Path']))
+      {
+            $cert_y1 = $this->GetY();
+            $cert_x1 = $this->GetX();
+
+            $w = $this->getPageWidth() - $this->lMargin - $this->rMargin;;
+
+            $this->MultiCell($w,$this->getFontSize(),$txt === null ? dl_iconv_pdf(dl_lang("stev.pdf.podepsano")):$txt,0,'L');
+            $cert_y2 = $this->GetY();
+            $this->setSignatureAppearance($cert_x1, $cert_y1-2, $w, $cert_y2-$cert_y1+4,-1,'');
+      }
+   }
+
+   /**
+    * Opatøí PDF certifikaèní znaèkou
+    * @param string $reason Dùvod podepsání (zobrazuje se v popisu certifikátu).
+    * @param array $cert_cfg Konfiguraèní parametr certifikátu. Pøi null se bere z vyspl/cert dle fakulty z dl_ses
+    * @param string $fakulta Fakulta, pokud neuvedeno, pak fakulta z dl_ses
+    */
+   public function podepsat($reason)
+   {
+        global $sis_config, $dl_ses, $dl_config;
+
+        $cert_cfg = $dl_config["stev"]["certifikat"];
+
+        if (isset($cert_cfg) && $cert_cfg['Path'] && is_readable($cert_cfg['Path']))
+        {
+               $cert = 'file://'.realpath($cert_cfg['Path']);
+               $cert_key = $cert;
+               if($cert_cfg['KeyPath']!="")
+               {
+                     $cert_key = 'file://'.realpath($cert_cfg['KeyPath']);
+               }
+               $cert_extra = "";
+               if($cert_cfg['ExtraPath']!="")
+               {
+                     $cert_extra = 'file://'.realpath($cert_cfg['ExtraPath']);
+               }
+
+               $cert_info = dl_iconv_pdf([
+                  "Name"     => $cert_cfg["Name"],
+                  "Location" => $cert_cfg["Location"],
+                  "ContactInfo"  => $cert_cfg["ContactInfo"]
+               ]);
+               $cert_info["Reason"] = $reason;
+
+               $pass = $sis_config['cert_pswd'];
+
+               $this->setSignature($cert, $cert_key, $pass, $cert_extra, 1 /* Dokument nelze modifikovat, ani vyplnit */, $cert_info,'A' /*Jen podpsat, necertifikovat*/);
+         }
+   }
+
+   /**
+    * Erudio: Snaha o opravu chyby, kdy poèet sloupcù tabulky se poèítá z prvního øádku
+    * -> doplní do tabulek do prvního øádku buòky
+    * @param string $html
+    * @return string
+    */
+      private static function fixHTML($html)
+      {
+            $doc = new DOMDocument();
+            @$doc->loadHTML('<html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"></head><body>'.$html.'</body></html>');
+
+            $tables = $doc->getElementsByTagName("table");
+            foreach($tables as $table)
+            {
+                   $maxcols = 0;
+                   foreach($table->childNodes as $n){
+                      if($n->localName=='tr')
+                      {
+                         $cols = self::numcols($n);
+                         if($cols>$maxcols)
+                         {
+                              $maxcols = $cols;
+                         }
+                      }
+                      if(in_array($n->localName,array('thead','tbody','tfoot')))
+                      {
+                           foreach($n->childNodes as $n2){
+                              if($n2->localName=='tr')
+                              {
+                                    $cols = self::numcols($n2);
+                                    if($cols>$maxcols)
+                                    {
+                                         $maxcols = $cols;
+                                    }
+                              }
+                           }
+                      }
+                   }
+
+                   foreach($table->childNodes as $n){
+                      if($n->localName=='tr')
+                      {
+                           self::fixcols($n,$maxcols,$doc);
+                           break;//jen první øádek
+                      }
+                      if(in_array($n->localName,array('thead','tbody','tfoot')))
+                      {
+                           foreach($n->childNodes as $n2)
+                           {
+                                 if($n2->localName=='tr')
+                                 {
+                                       self::fixcols($n2,$maxcols,$doc);
+                                       break 2; //jen první øádek
+                                 }
+                           }
+                      }
+                   }
+
+
+            }
+
+            $html = $doc->saveHTML();
+            $html = substr($html, strpos($html,"<body>")+strlen("<body>"));
+            $html = substr($html,0,strpos($html,"</body>"));
+            return $html;
+      }
+
+      /** Erudio - povolení nedìlitelných mezer. POZOR: mùže zpùsobovat problémy
+       * @param bool $enableNbsp
+       */
+      public function setEnableNbsp(bool $enableNbsp = true): void
+      {
+            $this->enableNbsp = $enableNbsp;
+      }
 
 } // END OF TCPDF CLASS
 

@@ -1813,11 +1813,13 @@ class TCPDF_STATIC {
 	 * @public static
 	 */
 	public static function fopenLocal($filename, $mode) {
-		if (strpos($filename, '://') === false) {
+      //Erudio zakomentováno
+		/*
+             if (strpos($filename, '://') === false) {
 			$filename = 'file://'.$filename;
-		} elseif (stream_is_local($filename) !== true) {
+		} elseif (strpos($filename, 'file://') !== 0) {
 			return false;
-		}
+		}*/
 		return fopen($filename, $mode);
 	}
 

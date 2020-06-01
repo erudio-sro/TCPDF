@@ -91,7 +91,7 @@ class TCPDF_IMPORT extends TCPDF {
 		// ...
 
 
-		print_r($data); // DEBUG
+		print_r($data); // DEBUG  ERUDIO:<balickovac:line_ignore_debug/>
 
 
 		unset($pdf);
