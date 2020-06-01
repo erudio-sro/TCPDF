@@ -43,6 +43,19 @@ PHP library for generating PDF documents on-the-fly.
 * Layers and object visibility.
 * PDF/A-1b support.
 
+### Erudio updates:
+* font variant: small-caps
+* no tcpdf link
+* enable non breakable space on demand
+* only subset of fonts
+* do not print header/footer by default
+* allow setting align and valign together
+* allowing line larger than maxwidth
+* Output method returns bool
+* Fixed column count on first row on table
+* Some new methods - MultiCellCount, RotatedText,HTMLCell,WordWrap
+* Few new signing helper methods
+
 ### Third party fonts:
 
 This library may include third party font files released with different licenses.
