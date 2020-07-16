@@ -25272,6 +25272,69 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
             $this->enableNbsp = $enableNbsp;
       }
 
+      /**
+       * Erudio: Aktuální font mùže zobrazit text?
+       * @param string $text
+       * @return bool
+       */
+      public function canDisplayText($text) : bool
+      {
+            $chars = TCPDF_STATIC::pregSplit('//','u', $text, -1, PREG_SPLIT_NO_EMPTY);
+            $code_array = array_map(array('TCPDF_FONTS', 'uniord'), $chars);
+
+            foreach ($code_array as $c)
+            {
+                  if (!isset($this->CurrentFont['cw'][$c]))
+                  {
+                        return false;
+                  }
+            }
+            return true;
+      }
+
+      /**
+       * Erudio: Nastaví písmo a pokud daný text není v písmu vypsatelný, nastaví písmo druhé, pøípadnì tøetí.
+       * @param string $family
+       * @param string $style
+       * @param int $size
+       * @param string $text
+       * @param string $backup_family
+       * @param string $backup_style
+       * @param int $backup_size
+       * @param string $backup_family2
+       * @param string $backup_style2
+       * @param int|null $backup_size2
+       * @return bool True pokud se ve finále podaøilo nastavit font co zobrazí celý text
+       */
+      public function SetFontWithBackup($family, $style, $size, $text,
+                                        $backup_family, $backup_style, $backup_size,
+                                        $backup_family2 = null, $backup_style2 = "", $backup_size2 = null) : bool
+      {
+            $this->SetFont($family, $style, $size);
+
+            if ($this->canDisplayText($text))
+            {
+                  return true;
+            }
+
+            $this->SetFont($backup_family, $backup_style, $backup_size);
+            if ($this->canDisplayText($text))
+            {
+                  return true;
+            }
+
+            if ($backup_family2 !== null)
+            {
+                  $this->SetFont($backup_family2, $backup_style2, $backup_size2);
+                  if ($this->canDisplayText($text))
+                  {
+                        return true;
+                  }
+            }
+
+            //nepovedlo se nastavit vypsatelné písmo
+            return false;
+      }
 } // END OF TCPDF CLASS
 
 //============================================================+
