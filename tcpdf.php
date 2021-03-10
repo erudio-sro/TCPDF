@@ -25077,14 +25077,14 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
                $out[] = $h;
             elseif ( $h >= 0xC2 ) {
                if ( ($h <= 0xDF) && ($i < $len -1) )
-                  $out[] = ($h & 0x1F) << 6 | (ord($str{++$i}) & 0x3F);
+                  $out[] = ($h & 0x1F) << 6 | (ord($str[++$i]) & 0x3F);
                elseif ( ($h <= 0xEF) && ($i < $len -2) )
-                  $out[] = ($h & 0x0F) << 12 | (ord($str{++$i}) & 0x3F) << 6
-                                             | (ord($str{++$i}) & 0x3F);
+                  $out[] = ($h & 0x0F) << 12 | (ord($str[++$i]) & 0x3F) << 6
+                                             | (ord($str[++$i]) & 0x3F);
                elseif ( ($h <= 0xF4) && ($i < $len -3) )
-                  $out[] = ($h & 0x0F) << 18 | (ord($str{++$i}) & 0x3F) << 12
-                                             | (ord($str{++$i}) & 0x3F) << 6
-                                             | (ord($str{++$i}) & 0x3F);
+                  $out[] = ($h & 0x0F) << 18 | (ord($str[++$i]) & 0x3F) << 12
+                                             | (ord($str[++$i]) & 0x3F) << 6
+                                             | (ord($str[++$i]) & 0x3F); //Erudio: opravy [++$i] místo {++$i} kvùli PHP8
             }
          }
          return $out;
@@ -25284,6 +25284,10 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
 
             foreach ($code_array as $c)
             {
+                  if ($c === 13 || $c === 10) //Odøádkování ignoruji
+                  {
+                        continue;
+                  }
                   if (!isset($this->CurrentFont['cw'][$c]))
                   {
                         return false;
