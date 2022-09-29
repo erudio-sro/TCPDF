@@ -55,6 +55,7 @@ PHP library for generating PDF documents on-the-fly.
 * Fixed column count on first row on table
 * Some new methods - MultiCellCount, RotatedText,HTMLCell,WordWrap, SetFontWithBackup
 * Few new signing helper methods
+* Support for separated RemSig signing
 
 ### Third party fonts:
 

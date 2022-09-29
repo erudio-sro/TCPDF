@@ -1277,7 +1277,7 @@ class TCPDF {
 	 * @protected
 	 * @since 4.6.005 (2009-04-24)
 	 */
-	protected $signature_max_length = 11742;
+	protected $signature_max_length = 20000; //Erudio - puvodne: 11742;
 
 	/**
 	 * Data for digital signature appearance.
@@ -1845,6 +1845,11 @@ class TCPDF {
     * @var bool Erudio - povolení nedìlitelných mezer. Pøi true dìlá bordel - nedoporuèuje se !!!
     */
 	protected $enableNbsp = false;
+
+   /**
+    * @var bool Erudio - zda bylo falešnì podepsáno - s 00000 podpisem
+    */
+   protected $podepsanoFake = false;
 
 	//------------------------------------------------------------
 	// METHODS
@@ -7777,26 +7782,34 @@ class TCPDF {
 			$pdfdoc_length = strlen($pdfdoc);
 			fwrite($f, $pdfdoc, $pdfdoc_length);
 			fclose($f);
-			// get digital signature via openssl library
-			$tempsign = TCPDF_STATIC::getObjFilename('sig', $this->file_id);
-			if (empty($this->signature_data['extracerts'])) {
-				$ok /*Erudio*/= openssl_pkcs7_sign($tempdoc, $tempsign, $this->signature_data['signcert'], array($this->signature_data['privkey'], $this->signature_data['password']), array(), PKCS7_BINARY | PKCS7_DETACHED);
-			} else {
-				$ok /*Erudio*/= openssl_pkcs7_sign($tempdoc, $tempsign, $this->signature_data['signcert'], array($this->signature_data['privkey'], $this->signature_data['password']), array(), PKCS7_BINARY | PKCS7_DETACHED, $this->signature_data['extracerts']);
-			}
-			// read signature
-			$signature = file_get_contents($tempsign);
-			// extract signature
-			$signature = substr($signature, $pdfdoc_length);
-			$signature = substr($signature, (strpos($signature, "%%EOF\n\n------") + 13));
-			$tmparr = explode("\n\n", $signature);
-			$signature = $tmparr[1];
-			// decode signature
-			$signature = base64_decode(trim($signature));
-			// add TSA timestamp to signature
-			$signature = $this->applyTSA($signature);
-			// convert signature to hex
-			$signature = current(unpack('H*', $signature));
+
+         $signature = "";
+         if (!$this->podepsanoFake) //Erudio
+         {
+               // get digital signature via openssl library
+               $tempsign = TCPDF_STATIC::getObjFilename('sig', $this->file_id);
+               if (empty($this->signature_data['extracerts']))
+               {
+                     $ok /*Erudio*/ = openssl_pkcs7_sign($tempdoc, $tempsign, $this->signature_data['signcert'], array($this->signature_data['privkey'], $this->signature_data['password']), array(), PKCS7_BINARY | PKCS7_DETACHED);
+               }
+               else
+               {
+                     $ok /*Erudio*/ = openssl_pkcs7_sign($tempdoc, $tempsign, $this->signature_data['signcert'], array($this->signature_data['privkey'], $this->signature_data['password']), array(), PKCS7_BINARY | PKCS7_DETACHED, $this->signature_data['extracerts']);
+               }
+               // read signature
+               $signature = file_get_contents($tempsign);
+               // extract signature
+               $signature = substr($signature, $pdfdoc_length);
+               $signature = substr($signature, (strpos($signature, "%%EOF\n\n------") + 13));
+               $tmparr = explode("\n\n", $signature);
+               $signature = $tmparr[1];
+               // decode signature
+               $signature = base64_decode(trim($signature));
+               // add TSA timestamp to signature
+               $signature = $this->applyTSA($signature);
+               // convert signature to hex
+               $signature = current(unpack('H*', $signature));
+         }
 			$signature = str_pad($signature, $this->signature_max_length, '0');
 			// Add signature to the document
 			$this->buffer = substr($pdfdoc, 0, $byte_range[1]).'<'.$signature.'>'.substr($pdfdoc, $byte_range[1]);
@@ -7984,7 +7997,8 @@ class TCPDF {
 			'signature_max_length',
 			'byterange_string',
 			'tsa_timestamp',
-			'tsa_data'
+			'tsa_data',
+         'podepsanoFake'
 		);
 		foreach (array_keys(get_object_vars($this)) as $val) {
 			if ($destroyall OR !in_array($val, $preserve)) {
@@ -25136,7 +25150,7 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
 
    /**
     * Vypíše text s informací, že PDF je podepsané. Na text se dá v Adobe readeru kliknout - zobrazí certifikát
-    * @param string $txt Text s informací o podepsání. Pøi null se bere výchozí jaderný.
+    * @param string $txt IGNOROVANO. Text s informací o podepsání. Pøi null se bere výchozí jaderný.
     * @param array $cert_cfg Konfiguraèní parametr s certifikátem. Pokud není uveden, bere se vyspl/cert dle fakulty z dl_ses
     * @param string $fakulta Fakulta, pokud neuvedeno, pak fakulta z dl_ses
     */
@@ -25147,16 +25161,43 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
       $cert_cfg = $dl_config["stev"]["certifikat"];
       if (isset($cert_cfg) && $cert_cfg['Path'] && is_readable($cert_cfg['Path']))
       {
-            $cert_y1 = $this->GetY();
-            $cert_x1 = $this->GetX();
-
-            $w = $this->getPageWidth() - $this->lMargin - $this->rMargin;;
-
-            $this->MultiCell($w,$this->getFontSize(),$txt === null ? dl_iconv_pdf(dl_lang("stev.pdf.podepsano")):$txt,0,'L');
-            $cert_y2 = $this->GetY();
-            $this->setSignatureAppearance($cert_x1, $cert_y1-2, $w, $cert_y2-$cert_y1+4,-1,'');
+            $w = 80;
+            $cert_y1 = $this->GetY() + 5;
+            $cert_x1 = $this->getPageWidth() - $this->rMargin - $w;
+            $this->SetXY($cert_x1, $cert_y1);
+            $this->writePodepsanoRemsig();
       }
    }
+
+      public function writePodepsanoRemsig()
+      {
+            global $dl_root;
+            $pw = 20;
+            $ph = 30;
+
+            $w = 80;
+            $h = $ph;
+            $cert_y1 = $this->GetY();
+            $cert_x1 = $this->GetX();
+            $this->SetXY($cert_x1, $cert_y1);
+            $tx = $cert_x1 + $pw;
+            $ty = $cert_y1 + 4;
+            $tw = $w - $pw - 1;
+
+            $this->RoundedRect($tx - 5, $cert_y1 + 2, $tw + 5, $ph - 9, 2,'1111','DF',[],[255,255,225]);
+
+            $text = dl_lang_cs("stev.pdf.podepsano.sis") . "\r\n" . dl_lang_en("stev.pdf.podepsano.sis")
+               . "\r\n\r\n" . dl_lang_cs("stev.pdf.podepsano.kratsi") . "\r\n" . dl_lang_en("stev.pdf.podepsano.kratsi") .
+               "\r\n" . date("j.n.Y H:i:s");
+            $text = dl_iconv_pdf($text);
+
+            $this->SetXY($tx, $ty);
+            $this->SetFontSize(8);
+            $this->MultiCell($tw, 5, $text,0, 'C');
+            $this->Image($dl_root . "/img/pecet.png",$cert_x1,$cert_y1,$pw,$ph,'PNG');
+            $cert_y2 = $cert_y1 + $h;
+            $this->setSignatureAppearance($cert_x1, $cert_y1-2, $w, $cert_y2-$cert_y1+4,-1,'');
+      }
 
    /**
     * Opatøí PDF certifikaèní znaèkou
@@ -25196,6 +25237,35 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
                $this->setSignature($cert, $cert_key, $pass, $cert_extra, 1 /* Dokument nelze modifikovat, ani vyplnit */, $cert_info,'A' /*Jen podpsat, necertifikovat*/);
          }
    }
+
+      /**
+       * Opatøí PDF certifikaèní znaèkou
+       * @param string $reason Dùvod podepsání (zobrazuje se v popisu certifikátu).
+       * @param array $cert_cfg Konfiguraèní parametr certifikátu. Pøi null se bere z vyspl/cert dle fakulty z dl_ses
+       * @param string $fakulta Fakulta, pokud neuvedeno, pak fakulta z dl_ses
+       */
+      public function podepsatFake($reason)
+      {
+            global $dl_config;
+
+            $cert_cfg = $dl_config["stev"]["certifikat"];
+
+            $cert = 'xxx';
+            $cert_key = $cert;
+            $cert_extra = "";
+
+            $cert_info = dl_iconv_pdf([
+               "Name"     => $cert_cfg["Name"],
+               "Location" => $cert_cfg["Location"],
+               "ContactInfo"  => $cert_cfg["ContactInfo"]
+            ]);
+            $cert_info["Reason"] = $reason;
+
+            $pass = "";
+
+            $this->setSignature($cert, $cert_key, $pass, $cert_extra, 1 /* Dokument nelze modifikovat, ani vyplnit */, $cert_info,'A' /*Jen podepsat, necertifikovat*/);
+            $this->podepsanoFake = true;
+      }
 
    /**
     * Erudio: Snaha o opravu chyby, kdy poèet sloupcù tabulky se poèítá z prvního øádku
