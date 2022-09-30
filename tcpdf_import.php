@@ -60,7 +60,7 @@ class TCPDF_IMPORT extends TCPDF {
 
 	/**
 	 * Import an existing PDF document
-	 * @param $filename (string) Filename of the PDF document to import.
+	 * @param string $filename Filename of the PDF document to import.
 	 * @return true in case of success, false otherwise
 	 * @public
 	 * @since 1.0.000 (2011-05-24)
@@ -91,7 +91,7 @@ class TCPDF_IMPORT extends TCPDF {
 		// ...
 
 
-		print_r($data); // DEBUG  ERUDIO:<balickovac:line_ignore_debug/>
+		print_r($data); // DEBUG ERUDIO:<balickovac:line_ignore_debug/>
 
 
 		unset($pdf);
