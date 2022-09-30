@@ -25313,6 +25313,8 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
    }
 
    /**
+    * !!! POZOR - NEFUNKÈNÍ V SIS4 !!!
+    * 
     * Vypíše text s informací, že PDF je podepsané. Na text se dá v Adobe readeru kliknout - zobrazí certifikát
     * @param string $txt IGNOROVANO. Text s informací o podepsání. Pøi null se bere výchozí jaderný.
     * @param array $cert_cfg Konfiguraèní parametr s certifikátem. Pokud není uveden, bere se vyspl/cert dle fakulty z dl_ses
@@ -25333,37 +25335,42 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
       }
    }
 
-      public function writePodepsanoRemsig()
-      {
-            global $dl_root;
-            $pw = 20;
-            $ph = 30;
+   /**
+    * !!! POZOR - NEFUNKÈNÍ V SIS4 !!!    
+    */ 
+    public function writePodepsanoRemsig()
+    {
+          global $dl_root;
+          $pw = 20;
+          $ph = 30;
 
-            $w = 80;
-            $h = $ph;
-            $cert_y1 = $this->GetY();
-            $cert_x1 = $this->GetX();
-            $this->SetXY($cert_x1, $cert_y1);
-            $tx = $cert_x1 + $pw;
-            $ty = $cert_y1 + 4;
-            $tw = $w - $pw - 1;
+          $w = 80;
+          $h = $ph;
+          $cert_y1 = $this->GetY();
+          $cert_x1 = $this->GetX();
+          $this->SetXY($cert_x1, $cert_y1);
+          $tx = $cert_x1 + $pw;
+          $ty = $cert_y1 + 4;
+          $tw = $w - $pw - 1;
 
-            $this->RoundedRect($tx - 5, $cert_y1 + 2, $tw + 5, $ph - 9, 2,'1111','DF',[],[255,255,225]);
+          $this->RoundedRect($tx - 5, $cert_y1 + 2, $tw + 5, $ph - 9, 2,'1111','DF',[],[255,255,225]);
 
-            $text = dl_lang_cs("stev.pdf.podepsano.sis") . "\r\n" . dl_lang_en("stev.pdf.podepsano.sis")
-               . "\r\n\r\n" . dl_lang_cs("stev.pdf.podepsano.kratsi") . "\r\n" . dl_lang_en("stev.pdf.podepsano.kratsi") .
-               "\r\n" . date("j.n.Y H:i:s");
-            $text = dl_iconv_pdf($text);
+          $text = dl_lang_cs("stev.pdf.podepsano.sis") . "\r\n" . dl_lang_en("stev.pdf.podepsano.sis")
+             . "\r\n\r\n" . dl_lang_cs("stev.pdf.podepsano.kratsi") . "\r\n" . dl_lang_en("stev.pdf.podepsano.kratsi") .
+             "\r\n" . date("j.n.Y H:i:s");
+          $text = dl_iconv_pdf($text);
 
-            $this->SetXY($tx, $ty);
-            $this->SetFontSize(8);
-            $this->MultiCell($tw, 5, $text,0, 'C');
-            $this->Image($dl_root . "/img/pecet.png",$cert_x1,$cert_y1,$pw,$ph,'PNG');
-            $cert_y2 = $cert_y1 + $h;
-            $this->setSignatureAppearance($cert_x1, $cert_y1-2, $w, $cert_y2-$cert_y1+4,-1,'');
-      }
+          $this->SetXY($tx, $ty);
+          $this->SetFontSize(8);
+          $this->MultiCell($tw, 5, $text,0, 'C');
+          $this->Image($dl_root . "/img/pecet.png",$cert_x1,$cert_y1,$pw,$ph,'PNG');
+          $cert_y2 = $cert_y1 + $h;
+          $this->setSignatureAppearance($cert_x1, $cert_y1-2, $w, $cert_y2-$cert_y1+4,-1,'');
+    }
 
    /**
+    * !!! POZOR - NEFUNKÈNÍ V SIS4 !!!
+    * 
     * Opatøí PDF certifikaèní znaèkou
     * @param string $reason Dùvod podepsání (zobrazuje se v popisu certifikátu).
     * @param array $cert_cfg Konfiguraèní parametr certifikátu. Pøi null se bere z vyspl/cert dle fakulty z dl_ses
@@ -25403,6 +25410,8 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
    }
 
       /**
+       * !!! POZOR - NEFUNKÈNÍ V SIS4 !!!
+       * 
        * Opatøí PDF certifikaèní znaèkou
        * @param string $reason Dùvod podepsání (zobrazuje se v popisu certifikátu).
        * @param array $cert_cfg Konfiguraèní parametr certifikátu. Pøi null se bere z vyspl/cert dle fakulty z dl_ses
