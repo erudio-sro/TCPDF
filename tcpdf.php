@@ -16617,7 +16617,9 @@ class TCPDF {
 			}
 		}
 		// create a special tag to contain the CSS array (used for table content)
-		$csstagarray = '<cssarray>'.htmlentities(json_encode($css)).'</cssarray>';
+		$csstagarray = '<cssarray>'.htmlentities(json_encode($css),
+                   /*Erudio: doplnìní UTF-8, kvùli tomu, že výchozí kódování u nás je 1250 */
+                  ENT_COMPAT | ENT_HTML401 | ENT_SUBSTITUTE | ENT_DISALLOWED, 'UTF-8').'</cssarray>';
 		// remove head and style blocks
 		$html = preg_replace('/<head([^\>]*?)>(.*?)<\/head>/is', '', $html);
 		$html = preg_replace('/<style([^\>]*?)>([^\<]*?)<\/style>/is', '', $html);
