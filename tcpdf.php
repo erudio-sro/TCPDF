@@ -1866,12 +1866,12 @@ class TCPDF {
 	protected $allowLocalFiles = false;
    
    /**
-    * @var bool Erudio - povolení nedìlitelných mezer. Pøi true dìlá bordel - nedoporuèuje se !!!
+    * @var bool Erudio - povolenÃ­ nedÄ›litelnÃ½ch mezer. PÅ™i true dÄ›lÃ¡ bordel - nedoporuÄuje se !!!
     */
 	protected $enableNbsp = false;
 
    /**
-    * @var bool Erudio - zda bylo falešnì podepsáno - s 00000 podpisem
+    * @var bool Erudio - zda bylo faleÅ¡nÄ› podepsÃ¡no - s 00000 podpisem
     */
    protected $podepsanoFake = false;
 
@@ -1889,11 +1889,11 @@ class TCPDF {
 	 * @param boolean $unicode TRUE means that the input text is unicode (default = true)
 	 * @param string $encoding Charset encoding (used only when converting back html entities); default is UTF-8.
 	 * @param boolean $diskcache DEPRECATED FEATURE
-	 * @param false|integer $pdfa If not false, set the document to PDF/A mode and the good version (1 or 3).
+	 * @param false|integer $pdfa If not false, set the document to PDF/A mode and the good version (1 or 3). Erudio: Default set to 2.
 	 * @public
 	 * @see getPageSizeFromFormat(), setPageFormat()
 	 */
-	public function __construct($orientation='P', $unit='mm', $format='A4', $unicode=true, $encoding='UTF-8', $diskcache=false, $pdfa=false) {
+	public function __construct($orientation='P', $unit='mm', $format='A4', $unicode=true, $encoding='UTF-8', $diskcache=false, $pdfa=2) {
 		// set file ID for trailer
 		$serformat = (is_array($format) ? json_encode($format) : $format);
 		$this->file_id = md5(TCPDF_STATIC::getRandomSeed('TCPDF'.$orientation.$unit.$serformat.$encoding));
@@ -1991,7 +1991,7 @@ class TCPDF {
 		$this->setCompression();
 		// set default PDF version number
 		$this->setPDFVersion();
-		$this->tcpdflink = true;
+		//$this->tcpdflink = true; Erudio
 		$this->encoding = $encoding;
 		$this->HREF = array();
 		$this->getFontsList();
@@ -4295,7 +4295,8 @@ class TCPDF {
 			$subset = $this->font_subsetting;
 		}
 		if ($this->pdfa_mode) {
-			$subset = false;
+         //Erudio
+			//$subset = false;
 		}
 		if (TCPDF_STATIC::empty_string($family)) {
 			if (!TCPDF_STATIC::empty_string($this->FontFamily)) {
@@ -5123,10 +5124,11 @@ class TCPDF {
 	 * @see SetFont(), SetDrawColor(), SetFillColor(), SetTextColor(), SetLineWidth(), AddLink(), Ln(), MultiCell(), Write(), SetAutoPageBreak()
 	 */
 	public function Cell($w, $h=0, $txt='', $border=0, $ln=0, $align='', $fill=false, $link='', $stretch=0, $ignore_min_height=false, $calign='T', $valign='M') {
-   		
+
+      $txt = (string) $txt; //Erudio: php 8.x, aby tam Å¡lo dÃ¡t null
 		$txt = str_replace(chr(9),"",$txt); //Erudio
 
-		//Erudio úprava, aby se do $align dalo dát i $valign
+		//Erudio Ãºprava, aby se do $align dalo dÃ¡t i $valign
 		$align_multi=$align;
 		for($i=0;$i<strlen($align_multi);$i++){
 			$al=$align_multi[$i];
@@ -5962,7 +5964,10 @@ class TCPDF {
 	 * @see SetFont(), SetDrawColor(), SetFillColor(), SetTextColor(), SetLineWidth(), Cell(), Write(), SetAutoPageBreak()
 	 */
 	public function MultiCell($w, $h, $txt, $border=0, $align='J', $fill=false, $ln=1, $x='', $y='', $reseth=true, $stretch=0, $ishtml=false, $autopadding=true, $maxh=0, $valign='T', $fitcell=false) {
-      //Erudio úprava, aby se do $align dalo dát i $valign
+
+      $txt = (string) $txt; //Erudio: php 8.x, aby tam Å¡lo dÃ¡t null
+
+      //Erudio Ãºprava, aby se do $align dalo dÃ¡t i $valign
       $align_multi=$align;
       for($i=0;$i<strlen($align_multi);$i++){
          $al=$align_multi[$i];
@@ -5974,14 +5979,14 @@ class TCPDF {
             $maxh = $h;
          }
       }
-      if($align == 'J') //Erudio oprava posledního øádku v zarovnání do bloku
+      if($align == 'J') //Erudio oprava poslednÃ­ho Å™Ã¡dku v zarovnÃ¡nÃ­ do bloku
       {
             $txt .= "\n";
       }
       $txt = str_replace(chr(9),"",$txt); //Erudio
       if (!$this->enableNbsp) //Erudio
       {
-            $txt = str_replace(chr(0xc2) . chr(0xa0), " ", $txt); //Erudio nedìlitelná mezera, dìlá bordel, odstranit
+            $txt = str_replace(chr(0xc2) . chr(0xa0), " ", $txt); //Erudio nedÄ›litelnÃ¡ mezera, dÄ›lÃ¡ bordel, odstranit
       }
       
 		$prev_cell_margin = $this->cell_margin;
@@ -6536,6 +6541,7 @@ class TCPDF {
 	 * @since 1.5
 	 */
 	public function Write($h, $txt, $link='', $fill=false, $align='', $ln=false, $stretch=0, $firstline=false, $firstblock=false, $maxh=0, $wadj=0, $margin=null) {
+      $txt = (string) $txt; //Erudio: php 8.x, aby tam Å¡lo dÃ¡t null
 		// check page for no-write regions and adapt page margins if necessary
 		list($this->x, $this->y) = $this->checkPageRegions($h, $this->x, $this->y);
 		if (strlen($txt) == 0) {
@@ -16618,7 +16624,7 @@ class TCPDF {
 		}
 		// create a special tag to contain the CSS array (used for table content)
 		$csstagarray = '<cssarray>'.htmlentities(json_encode($css),
-                   /*Erudio: doplnìní UTF-8, kvùli tomu, že výchozí kódování u nás je 1250 */
+                   /*Erudio: doplnÄ›nÃ­ UTF-8, kvÅ¯li tomu, Å¾e vÃ½chozÃ­ kÃ³dovÃ¡nÃ­ u nÃ¡s je 1250 */
                   ENT_COMPAT | ENT_HTML401 | ENT_SUBSTITUTE | ENT_DISALLOWED, 'UTF-8').'</cssarray>';
 		// remove head and style blocks
 		$html = preg_replace('/<head([^\>]*?)>(.*?)<\/head>/is', '', $html);
@@ -16697,8 +16703,8 @@ class TCPDF {
 		$html = preg_replace('/<textarea([^\>]*)>([^\<]*)<\/textarea>/xi', '<textarea\\1 value="\\2" />', $html);
 		$html = preg_replace('/<li([^\>]*)><\/li>/', '<li\\1>&nbsp;</li>', $html);
 		$html = preg_replace('/<li([^\>]*)>'.$this->re_space['p'].'*<img/'.$this->re_space['m'], '<li\\1><font size="1">&nbsp;</font><img', $html);
-		$html = preg_replace('/<([^\>\/]*)>[\s]/', '<\\1>&nbsp;', $html); // preserve some spaces
-		$html = preg_replace('/[\s]<\/([^\>]*)>/', '&nbsp;</\\1>', $html); // preserve some spaces
+      $html = preg_replace('/<([^\>\/]*)>[\s]/u', '<\\1>&nbsp;', $html); // preserve some spaces
+      $html = preg_replace('/[\s]<\/([^\>]*)>/u', '&nbsp;</\\1>', $html); // preserve some spaces
 		$html = preg_replace('/<su([bp])/', '<zws/><su\\1', $html); // fix sub/sup alignment
 		$html = preg_replace('/<\/su([bp])>/', '</su\\1><zws/>', $html); // fix sub/sup alignment
 		$html = preg_replace('/'.$this->re_space['p'].'+/'.$this->re_space['m'], chr(32), $html); // replace multiple spaces with a single space
@@ -17472,7 +17478,8 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
 	 * @public
 	 */
 	public function writeHTML($html, $ln=true, $fill=false, $reseth=false, $cell=false, $align='') {
-      //Erudio úprava: oprava tabulek
+      $html = (string) $html; //Erudio: php 8.x, aby tam Å¡lo dÃ¡t null
+      //Erudio Ãºprava: oprava tabulek
       try {
          $html = self::fixHTML($html);
       } catch (Exception $e) {
@@ -22551,11 +22558,13 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
 	 * @since 5.3.002 (2010-06-07)
 	 */
 	public function setFontSubsetting($enable=true) {
-		if ($this->pdfa_mode) {
+      //Erudio
+		/*if ($this->pdfa_mode) {
 			$this->font_subsetting = false;
-		} else {
-			$this->font_subsetting = $enable ? true : false;
-		}
+		} else {*/
+
+      $this->font_subsetting = $enable ? true : false;
+		//}
 	}
 
 	/**
@@ -24997,7 +25006,7 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
 
         return TCPDF_STATIC::file_exists($file);
     }
-      //============== ERUDIO nové =======
+      //============== ERUDIO novÃ© =======
 
 
       function getCMargin(){
@@ -25005,7 +25014,7 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
       }
 
       function CellT($w,$h=0,$txt='',$border=0,$ln=0,$align='')
-      {  //oøízne pøetékající text
+      {  //oÅ™Ã­zne pÅ™etÃ©kajÃ­cÃ­ text
          while($this->GetStringWidth($txt)>($w-$this->getCMargin()))
          {
                $txt = mb_substr($txt,0,-1,'UTF-8');
@@ -25018,10 +25027,10 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
       }
 
      /**
-      * Funkce pro zjistìní poètu øádkù vzniklých dìlením multicellu
+      * Funkce pro zjistÄ›nÃ­ poÄtu Å™Ã¡dkÅ¯ vzniklÃ½ch dÄ›lenÃ­m multicellu
       * @param int $width
       * @param string $txt
-      * @return array ('num_line' => poèet øádek, 'txt_len' => délka textu celkem)
+      * @return array ('num_line' => poÄet Å™Ã¡dek, 'txt_len' => dÃ©lka textu celkem)
       */
      function MultiCellCount($width,$txt)
      {
@@ -25262,7 +25271,7 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
                elseif ( ($h <= 0xF4) && ($i < $len -3) )
                   $out[] = ($h & 0x0F) << 18 | (ord($str[++$i]) & 0x3F) << 12
                                              | (ord($str[++$i]) & 0x3F) << 6
-                                             | (ord($str[++$i]) & 0x3F); //Erudio: opravy [++$i] místo {++$i} kvùli PHP8
+                                             | (ord($str[++$i]) & 0x3F); //Erudio: opravy [++$i] mÃ­sto {++$i} kvÅ¯li PHP8
             }
          }
          return $out;
@@ -25270,12 +25279,12 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
 
 
    /** Erudio
-    *  zjistí poèet sloupcù øádku
+    *  zjistÃ­ poÄet sloupcÅ¯ Å™Ã¡dku
     * @param DOMNode $tr
     */
    private static function numcols($tr)
    {
-      //FIXME: asi to nebude šlapat s rowspany
+      //FIXME: asi to nebude Å¡lapat s rowspany
       $cols=0;
       for($i=0;$i<$tr->childNodes->length;$i++)
       {
@@ -25297,10 +25306,10 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
    }
 
    /** Erudio
-    * pøidá td do øádku tabulky na daný poèet sloupcù
-    * @param DOMNode $tr Øádek
-    * @param int $num Poèet sloupcù kolik má být
-    * @param DOMDocument $doc Celý dokument
+    * pÅ™idÃ¡ td do Å™Ã¡dku tabulky na danÃ½ poÄet sloupcÅ¯
+    * @param DOMNode $tr Å˜Ã¡dek
+    * @param int $num PoÄet sloupcÅ¯ kolik mÃ¡ bÃ½t
+    * @param DOMDocument $doc CelÃ½ dokument
     */
    private static function fixcols($tr,$num,$doc)
    {
@@ -25313,11 +25322,11 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
    }
 
    /**
-    * !!! POZOR - NEFUNKÈNÍ V SIS4 !!!
+    * !!! POZOR - NEFUNKÄŒNÃ V SIS4 !!!
     * 
-    * Vypíše text s informací, že PDF je podepsané. Na text se dá v Adobe readeru kliknout - zobrazí certifikát
-    * @param string $txt IGNOROVANO. Text s informací o podepsání. Pøi null se bere výchozí jaderný.
-    * @param array $cert_cfg Konfiguraèní parametr s certifikátem. Pokud není uveden, bere se vyspl/cert dle fakulty z dl_ses
+    * VypÃ­Å¡e text s informacÃ­, Å¾e PDF je podepsanÃ©. Na text se dÃ¡ v Adobe readeru kliknout - zobrazÃ­ certifikÃ¡t
+    * @param string $txt IGNOROVANO. Text s informacÃ­ o podepsÃ¡nÃ­. PÅ™i null se bere vÃ½chozÃ­ jadernÃ½.
+    * @param array $cert_cfg KonfiguraÄnÃ­ parametr s certifikÃ¡tem. Pokud nenÃ­ uveden, bere se vyspl/cert dle fakulty z dl_ses
     * @param string $fakulta Fakulta, pokud neuvedeno, pak fakulta z dl_ses
     */
    public function writePodepsano($txt = null)
@@ -25336,11 +25345,11 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
    }
 
    /**
-    * !!! POZOR - NEFUNKÈNÍ V SIS4 !!!    
+    * !!! POZOR - NEFUNKÄŒNÃ V SIS4 !!!    
     */ 
     public function writePodepsanoRemsig()
     {
-          global $dl_root;
+          global $dl_root, $dl_config;
           $pw = 20;
           $ph = 30;
 
@@ -25353,7 +25362,25 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
           $ty = $cert_y1 + 4;
           $tw = $w - $pw - 1;
 
-          $this->RoundedRect($tx - 5, $cert_y1 + 2, $tw + 5, $ph - 9, 2,'1111','DF',[],[255,255,225]);
+          if ($dl_config["stev"]["pecet_vzhled"]["ramecek"])
+          {
+                $color_pattern = '/^#(?<r>[a-fA-F0-9]{2})(?<g>[a-fA-F0-9]{2})(?<b>[a-fA-F0-9]{2})$/';
+                $barva_pozadi_arr = [255, 255, 225];
+                $barva_pozadi_hex = $dl_config["stev"]["pecet_vzhled"]["barva_pozadi_ramecku"];
+                if (preg_match($color_pattern, $barva_pozadi_hex, $m))
+                {
+                      $barva_pozadi_arr = [hexdec($m["r"]), hexdec($m["g"]), hexdec($m["b"])];
+                }
+
+                $barva_okraje_arr = [0, 0, 0];
+                $barva_okraje_hex = $dl_config["stev"]["pecet_vzhled"]["barva_okraje_ramecku"];
+                if (preg_match($color_pattern, $barva_okraje_hex, $m))
+                {
+                      $barva_okraje_arr = [hexdec($m["r"]), hexdec($m["g"]), hexdec($m["b"])];
+                }
+
+                $this->RoundedRect($tx - 5, $cert_y1 + 2, $tw + 5, $ph - 9, 2, '1111', 'DF', ['color' => $barva_okraje_arr], $barva_pozadi_arr);
+          }
 
           $text = dl_lang_cs("stev.pdf.podepsano.sis") . "\r\n" . dl_lang_en("stev.pdf.podepsano.sis")
              . "\r\n\r\n" . dl_lang_cs("stev.pdf.podepsano.kratsi") . "\r\n" . dl_lang_en("stev.pdf.podepsano.kratsi") .
@@ -25363,17 +25390,22 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
           $this->SetXY($tx, $ty);
           $this->SetFontSize(8);
           $this->MultiCell($tw, 5, $text,0, 'C');
-          $this->Image($dl_root . "/img/pecet.png",$cert_x1,$cert_y1,$pw,$ph,'PNG');
+          $pecet_file = $dl_root . "/img/pecet.png";
+          if (file_exists($dl_root . "/res/stev/pecet.png"))
+          {
+                $pecet_file = $dl_root . "/res/stev/pecet.png";
+          }
+          $this->Image($pecet_file,$cert_x1,$cert_y1,$pw,$ph,'PNG');
           $cert_y2 = $cert_y1 + $h;
           $this->setSignatureAppearance($cert_x1, $cert_y1-2, $w, $cert_y2-$cert_y1+4,-1,'');
     }
 
    /**
-    * !!! POZOR - NEFUNKÈNÍ V SIS4 !!!
+    * !!! POZOR - NEFUNKÄŒNÃ V SIS4 !!!
     * 
-    * Opatøí PDF certifikaèní znaèkou
-    * @param string $reason Dùvod podepsání (zobrazuje se v popisu certifikátu).
-    * @param array $cert_cfg Konfiguraèní parametr certifikátu. Pøi null se bere z vyspl/cert dle fakulty z dl_ses
+    * OpatÅ™Ã­ PDF certifikaÄnÃ­ znaÄkou
+    * @param string $reason DÅ¯vod podepsÃ¡nÃ­ (zobrazuje se v popisu certifikÃ¡tu).
+    * @param array $cert_cfg KonfiguraÄnÃ­ parametr certifikÃ¡tu. PÅ™i null se bere z vyspl/cert dle fakulty z dl_ses
     * @param string $fakulta Fakulta, pokud neuvedeno, pak fakulta z dl_ses
     */
    public function podepsat($reason)
@@ -25410,11 +25442,11 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
    }
 
       /**
-       * !!! POZOR - NEFUNKÈNÍ V SIS4 !!!
+       * !!! POZOR - NEFUNKÄŒNÃ V SIS4 !!!
        * 
-       * Opatøí PDF certifikaèní znaèkou
-       * @param string $reason Dùvod podepsání (zobrazuje se v popisu certifikátu).
-       * @param array $cert_cfg Konfiguraèní parametr certifikátu. Pøi null se bere z vyspl/cert dle fakulty z dl_ses
+       * OpatÅ™Ã­ PDF certifikaÄnÃ­ znaÄkou
+       * @param string $reason DÅ¯vod podepsÃ¡nÃ­ (zobrazuje se v popisu certifikÃ¡tu).
+       * @param array $cert_cfg KonfiguraÄnÃ­ parametr certifikÃ¡tu. PÅ™i null se bere z vyspl/cert dle fakulty z dl_ses
        * @param string $fakulta Fakulta, pokud neuvedeno, pak fakulta z dl_ses
        */
       public function podepsatFake($reason)
@@ -25441,8 +25473,8 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
       }
 
    /**
-    * Erudio: Snaha o opravu chyby, kdy poèet sloupcù tabulky se poèítá z prvního øádku
-    * -> doplní do tabulek do prvního øádku buòky
+    * Erudio: Snaha o opravu chyby, kdy poÄet sloupcÅ¯ tabulky se poÄÃ­tÃ¡ z prvnÃ­ho Å™Ã¡dku
+    * -> doplnÃ­ do tabulek do prvnÃ­ho Å™Ã¡dku buÅˆky
     * @param string $html
     * @return string
     */
@@ -25483,7 +25515,7 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
                       if($n->localName=='tr')
                       {
                            self::fixcols($n,$maxcols,$doc);
-                           break;//jen první øádek
+                           break;//jen prvnÃ­ Å™Ã¡dek
                       }
                       if(in_array($n->localName,array('thead','tbody','tfoot')))
                       {
@@ -25492,7 +25524,7 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
                                  if($n2->localName=='tr')
                                  {
                                        self::fixcols($n2,$maxcols,$doc);
-                                       break 2; //jen první øádek
+                                       break 2; //jen prvnÃ­ Å™Ã¡dek
                                  }
                            }
                       }
@@ -25507,7 +25539,7 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
             return $html;
       }
 
-      /** Erudio - povolení nedìlitelných mezer. POZOR: mùže zpùsobovat problémy
+      /** Erudio - povolenÃ­ nedÄ›litelnÃ½ch mezer. POZOR: mÅ¯Å¾e zpÅ¯sobovat problÃ©my
        * @param bool $enableNbsp
        */
       public function setEnableNbsp(bool $enableNbsp = true): void
@@ -25516,7 +25548,7 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
       }
 
       /**
-       * Erudio: Aktuální font mùže zobrazit text?
+       * Erudio: AktuÃ¡lnÃ­ font mÅ¯Å¾e zobrazit text?
        * @param string $text
        * @return bool
        */
@@ -25527,7 +25559,7 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
 
             foreach ($code_array as $c)
             {
-                  if ($c === 13 || $c === 10) //Odøádkování ignoruji
+                  if ($c === 13 || $c === 10) //OdÅ™Ã¡dkovÃ¡nÃ­ ignoruji
                   {
                         continue;
                   }
@@ -25540,7 +25572,7 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
       }
 
       /**
-       * Erudio: Nastaví písmo a pokud daný text není v písmu vypsatelný, nastaví písmo druhé, pøípadnì tøetí.
+       * Erudio: NastavÃ­ pÃ­smo a pokud danÃ½ text nenÃ­ v pÃ­smu vypsatelnÃ½, nastavÃ­ pÃ­smo druhÃ©, pÅ™Ã­padnÄ› tÅ™etÃ­.
        * @param string $family
        * @param string $style
        * @param int $size
@@ -25551,7 +25583,7 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
        * @param string $backup_family2
        * @param string $backup_style2
        * @param int|null $backup_size2
-       * @return bool True pokud se ve finále podaøilo nastavit font co zobrazí celý text
+       * @return bool True pokud se ve finÃ¡le podaÅ™ilo nastavit font co zobrazÃ­ celÃ½ text
        */
       public function SetFontWithBackup($family, $style, $size, $text,
                                         $backup_family, $backup_style, $backup_size,
@@ -25579,7 +25611,7 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
                   }
             }
 
-            //nepovedlo se nastavit vypsatelné písmo
+            //nepovedlo se nastavit vypsatelnÃ© pÃ­smo
             return false;
       }
 } // END OF TCPDF CLASS

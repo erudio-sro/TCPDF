@@ -56,6 +56,8 @@ PHP library for generating PDF documents on-the-fly.
 * Some new methods - MultiCellCount, RotatedText,HTMLCell,WordWrap, SetFontWithBackup
 * Few new signing helper methods
 * Support for separated RemSig signing
+* PDF/A-2B is set by default
+* Enabled font subsetting for PDF/A
 
 ### Third party fonts:
 
