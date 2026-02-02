@@ -1875,6 +1875,32 @@ class TCPDF {
     */
    protected $podepsanoFake = false;
 
+
+  /**
+   *  Erudio - Výchozí alternativní soubory fontů.
+   */
+   public const DEFAULT_ALTERNATE_FONTFILES = [
+      "notoserifhebrew",
+      "notoserifjp",
+      "notoserifkr",
+      "notoserifsc",
+      "notoserifthai",
+      "unifont"
+   ];
+
+  /**
+   * @var array<string,int[]> Erudio - Codepointy alternativních fontů.
+   * Toto pole je plněno automaticky v metodě setAlternativeFontFiles().
+   */
+   private $alternateFontsCodePoints = [];
+
+  /**
+   * @var string[] Erudio - Alternativní soubory fontů - názvy jakjsou ve složce fonts (bez přípony).
+   * Jde o fonty, které se použijí při výpisu HTML pokud aktuální font nepodporuje daný znak.
+   * Znaky se hledají v písmech podle pořadí písem v seznamu.
+   */
+   private $alternateFontFiles = self::DEFAULT_ALTERNATE_FONTFILES;
+
 	//------------------------------------------------------------
 	// METHODS
 	//------------------------------------------------------------
@@ -1889,12 +1915,12 @@ class TCPDF {
 	 * @param boolean $unicode TRUE means that the input text is unicode (default = true)
 	 * @param string $encoding Charset encoding (used only when converting back html entities); default is UTF-8.
 	 * @param boolean $diskcache DEPRECATED FEATURE
-	 * @param false|integer $pdfa If not false, set the document to PDF/A mode and the good version (1 or 3). Erudio: Default set to 2.
+	 * @param false|integer $pdfa If not false, set the document to PDF/A mode and the good version (1 or 3). Erudio: Default set to 3.
 	 * @public
 	 * @see getPageSizeFromFormat(), setPageFormat()
 	 */
-	public function __construct($orientation='P', $unit='mm', $format='A4', $unicode=true, $encoding='UTF-8', $diskcache=false, $pdfa=2) {
-		// set file ID for trailer
+	public function __construct($orientation='P', $unit='mm', $format='A4', $unicode=true, $encoding='UTF-8', $diskcache=false, $pdfa=3) {
+      // set file ID for trailer
 		$serformat = (is_array($format) ? json_encode($format) : $format);
 		$this->file_id = md5(TCPDF_STATIC::getRandomSeed('TCPDF'.$orientation.$unit.$serformat.$encoding));
 		$this->font_obj_ids = array();
@@ -1953,10 +1979,10 @@ class TCPDF {
 			'courierB'=>'Courier-Bold',
 			'courierI'=>'Courier-Oblique',
 			'courierBI'=>'Courier-BoldOblique',
-			/*'helveticaB'=>'Helvetica-Bold',
+			'helveticaB'=>'Helvetica-Bold',
 			'helveticaI'=>'Helvetica-Oblique',
 			'helveticaBI'=>'Helvetica-BoldOblique',
-			'times'=>'Times-Roman',
+			/*'times'=>'Times-Roman',
 			'timesB'=>'Times-Bold',
 			'timesI'=>'Times-Italic',
 			'timesBI'=>'Times-BoldItalic',
@@ -2049,6 +2075,7 @@ class TCPDF {
 		register_shutdown_function(array($this, '_destroy'), true);
       $this->setPrintHeader(false); //ERUDIO
       $this->setPrintFooter(false); //ERUDIO
+      $this->initAlternateFontFiles(); //ERUDIO
 	}
 
 	/**
@@ -4324,7 +4351,8 @@ class TCPDF {
 		}
 		if ($this->pdfa_mode AND (isset($this->CoreFonts[$family]))) {
 			// all fonts must be embedded
-			$family = 'pdfa'.$family;
+         //Erudio: Do not add prefix
+			//$family = 'pdfa'.$family;
 		}
 		$tempstyle = strtoupper($style);
 		$style = '';
@@ -13107,7 +13135,8 @@ class TCPDF {
 		$font = 'zapfdingbats';
 		if ($this->pdfa_mode) {
 			// all fonts must be embedded
-			$font = 'pdfa'.$font;
+         //Erudio: Do not add prefix
+         //$font = 'pdfa'.$font;
 		}
 		$this->AddFont($font);
 		$tmpfont = $this->getFontBuffer($font);
@@ -13383,7 +13412,8 @@ class TCPDF {
 		$font = 'zapfdingbats';
 		if ($this->pdfa_mode) {
 			// all fonts must be embedded
-			$font = 'pdfa'.$font;
+         //Erudio: Do not add prefix
+         //$font = 'pdfa'.$font;
 		}
 		$this->AddFont($font);
 		$tmpfont = $this->getFontBuffer($font);
@@ -17479,6 +17509,8 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
 	 */
 	public function writeHTML($html, $ln=true, $fill=false, $reseth=false, $cell=false, $align='') {
       $html = (string) $html; //Erudio: php 8.x, aby tam šlo dát null
+      $html = $this->injectAlternateFontTagsToHtml($html); //Erudio: Širší podpora znaků
+
       //Erudio úprava: oprava tabulek
       try {
          $html = self::fixHTML($html);
@@ -25572,10 +25604,101 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
       }
 
       /**
+       * Erudio: Vloží do HTML tagy font face=alt_xxx na místa, kde je třeba širší podpora znaků.
+       * Viz metoda setAlternateFontFiles.
+       * @param string|null $html Vstupní HTML
+       * @return string Výstup
+       */
+      private function injectAlternateFontTagsToHtml(?string $html): string
+      {
+            $html = (string) $html;
+            $chars = TCPDF_STATIC::pregSplit('//','u', $html, -1, PREG_SPLIT_NO_EMPTY);
+            $code_array = array_map(array('TCPDF_FONTS', 'uniord'), $chars);
+
+            $out_html = "";
+            $buffer = "";
+
+            $nynejsi_font_file_name = null;
+
+            $flush = function() use (&$buffer, &$nynejsi_font_file_name, &$out_html) {
+                  if ($buffer === '')
+                  {
+                        return;
+                  }
+                  if ($nynejsi_font_file_name !== "")
+                  {
+                        $family = "alt_$nynejsi_font_file_name";
+                        $css = "font-family: $family;";
+                        $css .= "font-style: normal;"; // resetovat italiku, do budoucna možno přidat podporu
+                        $regularPath = PDF_FONTPATH . $nynejsi_font_file_name . '.php';
+                        $boldPath = PDF_FONTPATH . $nynejsi_font_file_name . 'b.php';
+                        
+                        $this->AddFont($family, '', $regularPath);
+                        if (file_exists($boldPath))
+                        {
+                              $this->AddFont($family, 'B', $boldPath);
+                        }
+                        else
+                        {
+                              $css .= "font-weight: normal;"; //resetujeme tučnost písma
+                        }
+
+                        $out_html .= '<span style="' . $css . '">' . $buffer . '</span>';
+                  }
+                  else
+                  {
+                        $out_html .= $buffer;
+                  }
+                  $buffer = '';
+            };
+
+
+            for ($i = 0; $i < count($code_array); $i++)
+            {
+                  $c = $chars[$i];
+                  if ($c === "\n" || $c === "\r" || $c === "\t") //Odřádkování a taby ignoruji
+                  {
+                        continue;
+                  }
+
+                  $code = $code_array[$i];
+                  $je_alternativni = !isset($this->CurrentFont['cw'][$code]);
+
+                  $nove_font_file_name = ""; //Prázdný řetězec = Originál font
+                  if ($je_alternativni)
+                  {
+                        foreach ($this->alternateFontFiles as $font_file_name)
+                        {
+                              if (in_array($code, $this->alternateFontsCodePoints[$font_file_name]))
+                              {
+                                    $nove_font_file_name = $font_file_name;
+                                    break;
+                              }
+                        }
+                  }
+
+
+                  if ($nynejsi_font_file_name === null)
+                  {
+                        $nynejsi_font_file_name =  $nove_font_file_name;
+                  }
+                  elseif ($nove_font_file_name !== $nynejsi_font_file_name)
+                  {
+                        $flush();
+                        $nynejsi_font_file_name = $nove_font_file_name;
+                  }
+
+                  $buffer .= $c;
+            }
+            $flush();
+            return $out_html;
+      }
+
+      /**
        * Erudio: Nastaví písmo a pokud daný text není v písmu vypsatelný, nastaví písmo druhé, případně třetí.
        * @param string $family
        * @param string $style
-       * @param int $size
+       * @param float|null $size
        * @param string $text
        * @param string $backup_family
        * @param string $backup_style
@@ -25613,6 +25736,36 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
 
             //nepovedlo se nastavit vypsatelné písmo
             return false;
+      }
+
+      /**
+       * Erudio: Inicializuje proměnnou alternateFontsCodePoints.
+       * @return void
+       */
+      private function initAlternateFontFiles(): void
+      {
+            $this->alternateFontsCodePoints = [];
+            foreach ($this->alternateFontFiles as $fontFileName)
+            {
+                  $cw = [];
+                  include(PDF_FONTPATH . $fontFileName . ".php");
+                  $this->alternateFontsCodePoints[$fontFileName] = array_keys($cw);
+            }
+      }
+
+      /**
+       * Erudio: Nastaví seznam alternativních souborů písem.
+       * Alternativní písmo se zobrazí v případě, že aktuální písmo nepodporuje daný znak.
+       * Písma se prohledávají v pořadí v seznamu.
+       * Funguje to jen na výpisy v HTML!
+       *
+       * @param ...$fontFiles
+       * @return void
+       */
+      public function setAlternateFontFiles(...$fontFiles): void
+      {
+            $this->alternateFontFiles = $fontFiles;
+            $this->initAlternateFontFiles();
       }
 } // END OF TCPDF CLASS
 
