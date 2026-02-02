@@ -58,6 +58,8 @@ PHP library for generating PDF documents on-the-fly.
 * Support for separated RemSig signing
 * PDF/A-2B is set by default
 * Enabled font subsetting for PDF/A
+* Fixed font subsetting problem where offset to head gets overriden by checksum
+* Added setAlternateFontFiles method to set font files to search for a character when there is one missing (HTML prints only)
 
 ### Third party fonts:
 
