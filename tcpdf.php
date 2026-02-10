@@ -25628,10 +25628,12 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
                   if ($nynejsi_font_file_name !== "")
                   {
                         $family = "alt_$nynejsi_font_file_name";
-                        $css = "font-family: $family;";
-                        $css .= "font-style: normal;"; // resetovat italiku, do budoucna možno přidat podporu
+                        $css = "";
+                        $css .= "font-family: $family;";
                         $regularPath = PDF_FONTPATH . $nynejsi_font_file_name . '.php';
                         $boldPath = PDF_FONTPATH . $nynejsi_font_file_name . 'b.php';
+                        $italicPath = PDF_FONTPATH . $nynejsi_font_file_name . 'i.php';
+                        $boldItalicPath = PDF_FONTPATH . $nynejsi_font_file_name . 'bi.php';
                         
                         $this->AddFont($family, '', $regularPath);
                         if (file_exists($boldPath))
@@ -25640,7 +25642,27 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
                         }
                         else
                         {
-                              $css .= "font-weight: normal;"; //resetujeme tučnost písma
+                              $this->AddFont($family, 'B', $regularPath);
+                        }
+                        if (file_exists($italicPath))
+                        {
+                              $this->AddFont($family, 'I', $italicPath);
+                        }
+                        else
+                        {
+                              $this->AddFont($family, 'I', $regularPath);
+                        }
+                        if (file_exists($boldItalicPath))
+                        {
+                              $this->AddFont($family, 'BI', $italicPath);
+                        }
+                        else if(file_exists($boldPath))
+                        {
+                              $this->AddFont($family, 'BI', $boldPath);
+                        }
+                        else
+                        {
+                              $this->AddFont($family, 'BI', $regularPath);
                         }
 
                         $out_html .= '<span style="' . $css . '">' . $buffer . '</span>';
@@ -25658,6 +25680,7 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
                   $c = $chars[$i];
                   if ($c === "\n" || $c === "\r" || $c === "\t") //Odřádkování a taby ignoruji
                   {
+                        $buffer .= $c;
                         continue;
                   }
 
