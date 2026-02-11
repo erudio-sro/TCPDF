@@ -25630,10 +25630,10 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
                         $family = "alt_$nynejsi_font_file_name";
                         $css = "";
                         $css .= "font-family: $family;";
-                        $regularPath = PDF_FONTPATH . $nynejsi_font_file_name . '.php';
-                        $boldPath = PDF_FONTPATH . $nynejsi_font_file_name . 'b.php';
-                        $italicPath = PDF_FONTPATH . $nynejsi_font_file_name . 'i.php';
-                        $boldItalicPath = PDF_FONTPATH . $nynejsi_font_file_name . 'bi.php';
+                        $regularPath = K_PATH_FONTS . $nynejsi_font_file_name . '.php';
+                        $boldPath = K_PATH_FONTS . $nynejsi_font_file_name . 'b.php';
+                        $italicPath = K_PATH_FONTS . $nynejsi_font_file_name . 'i.php';
+                        $boldItalicPath = K_PATH_FONTS . $nynejsi_font_file_name . 'bi.php';
                         
                         $this->AddFont($family, '', $regularPath);
                         if (file_exists($boldPath))
@@ -25771,7 +25771,7 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
             foreach ($this->alternateFontFiles as $fontFileName)
             {
                   $cw = [];
-                  include(PDF_FONTPATH . $fontFileName . ".php");
+                  include(K_PATH_FONTS . $fontFileName . ".php");
                   $this->alternateFontsCodePoints[$fontFileName] = array_keys($cw);
             }
       }
