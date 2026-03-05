@@ -25713,6 +25713,10 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
 
                   $buffer .= $c;
             }
+            if ($nynejsi_font_file_name === null)
+            {
+                  $nynejsi_font_file_name = "";
+            }
             $flush();
             return $out_html;
       }
